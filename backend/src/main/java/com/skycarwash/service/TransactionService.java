@@ -15,9 +15,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @Slf4j
 @Service
@@ -149,6 +155,27 @@ public class TransactionService {
                 .stream()
                 .map(tx -> toResponse(tx, tx.getClient()))
                 .toList();
+    }
+
+    // ------------------------------------------------------------------ //
+    //  TRANSACTION HISTORY (paginated + filtered)                          //
+    // ------------------------------------------------------------------ //
+
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> findHistory(LocalDate from, LocalDate to, String method, int page, int size) {
+        LocalDateTime fromDt = (from != null ? from : LocalDate.now().minusDays(30)).atStartOfDay();
+        LocalDateTime toDt   = (to   != null ? to.plusDays(1) : LocalDate.now().plusDays(1)).atStartOfDay();
+
+        Specification<Transaction> spec = (root, q, cb) -> cb.between(root.get("createdAt"), fromDt, toDt);
+
+        if (method != null && !method.isBlank()) {
+            Transaction.PaymentMethod pm = Transaction.PaymentMethod.valueOf(method);
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("paymentMethod"), pm));
+        }
+
+        PageRequest pageable = PageRequest.of(page, Math.min(size, 50), Sort.by("createdAt").descending());
+        return transactionRepository.findAll(spec, pageable)
+                .map(tx -> toResponse(tx, tx.getClient()));
     }
 
     // ------------------------------------------------------------------ //
