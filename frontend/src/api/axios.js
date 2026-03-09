@@ -17,14 +17,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 – token expired or invalid
+// Handle 401 – token expired or invalid.
+// When a logged-in user's session expires mid-use, show a "session expirée"
+// modal (via auth.sessionExpired) instead of silently redirecting.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       const auth = useAuthStore()
-      auth.logout()
-      router.push('/login')
+      if (auth.isAuthenticated) {
+        // Token expired during an active session → surface the modal
+        auth.sessionExpired = true
+      } else {
+        // Already logged out (e.g. login page 401) → redirect directly
+        auth.logout()
+        router.push('/login')
+      }
     }
     return Promise.reject(error)
   }
