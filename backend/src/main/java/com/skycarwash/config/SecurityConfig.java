@@ -41,8 +41,11 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // ── Security response headers ──────────────────────────────────────
                 .headers(headers -> headers
-                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
-                        .contentTypeOptions(HeadersConfigurer.ContentTypeOptionsConfig::and)
+                        // X-Frame-Options: DENY
+                        .frameOptions(fo -> fo.deny())
+                        // X-Content-Type-Options: nosniff  (explicit lambda, not deprecated ::and ref)
+                        .contentTypeOptions(co -> { /* enable with defaults */ })
+                        // HSTS – only sent over HTTPS connections (correct per spec)
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .maxAgeInSeconds(31536000)
                                 .includeSubDomains(true))
@@ -51,10 +54,12 @@ public class SecurityConfig {
                         .permissionsPolicy(pp -> pp
                                 .policy("camera=(), microphone=(), geolocation=(), payment=()")))
                 .authorizeHttpRequests(auth -> auth
+                        // CORS preflight must always pass through without auth checks
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         // Actuator health probes (Railway / Render / k8s)
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-                        // Swagger UI – restrict to non-production or authenticated users
+                        // Swagger UI – restrict to authenticated users
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").authenticated()
                         // WebSocket endpoint
                         .requestMatchers("/ws/**").permitAll()
