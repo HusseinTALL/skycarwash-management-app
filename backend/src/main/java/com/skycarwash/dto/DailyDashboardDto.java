@@ -17,6 +17,8 @@ import java.util.Map;
  * @param revenueDelta       totalRevenue - lastWeekRevenue (can be negative)
  * @param vehiclesDelta      vehiclesWashed - lastWeekVehicles
  * @param recentTransactions Last 10 transactions (for activity feed)
+ * @param cancelledCount     Number of cancelled transactions for the day
+ * @param cancelledAmount    Sum of cancelled transaction amounts (for closing report)
  */
 public record DailyDashboardDto(
         LocalDate date,
@@ -28,5 +30,7 @@ public record DailyDashboardDto(
         int lastWeekRevenue,
         int revenueDelta,
         int vehiclesDelta,
-        List<TransactionResponse> recentTransactions
+        List<TransactionResponse> recentTransactions,
+        int cancelledCount,
+        int cancelledAmount
 ) {}

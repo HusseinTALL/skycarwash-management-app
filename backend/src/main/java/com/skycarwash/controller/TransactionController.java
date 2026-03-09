@@ -6,11 +6,14 @@ import com.skycarwash.dto.TransactionResponse;
 import com.skycarwash.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -41,5 +44,15 @@ public class TransactionController {
     @GetMapping("/today")
     public ResponseEntity<List<TransactionResponse>> today() {
         return ResponseEntity.ok(transactionService.findToday());
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<Page<TransactionResponse>> history(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String method,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(transactionService.findHistory(from, to, method, page, size));
     }
 }

@@ -76,11 +76,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,   "/api/clients/**").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PUT,    "/api/clients/**").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.DELETE, "/api/clients/**").hasRole("MANAGER")
-                        // Transactions – employee + manager can create/cancel; manager can read today
+                        // Transactions – employee + manager can create/cancel; manager/partner can read
                         .requestMatchers(HttpMethod.POST, "/api/transactions/**").hasAnyRole("EMPLOYEE", "MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/today").hasAnyRole("MANAGER", "PARTNER")
+                        .requestMatchers(HttpMethod.GET,  "/api/transactions/history").hasAnyRole("MANAGER", "PARTNER")
                         // Dashboard – manager + partner
                         .requestMatchers("/api/dashboard/**").hasAnyRole("MANAGER", "PARTNER")
+                        // Expenses – manager only
+                        .requestMatchers("/api/expenses/**").hasRole("MANAGER")
                         // User management – manager only
                         .requestMatchers("/api/manager/**").hasRole("MANAGER")
                         // Everything else requires authentication

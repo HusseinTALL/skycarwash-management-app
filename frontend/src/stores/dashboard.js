@@ -21,6 +21,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
   /** Set to true when a malformed WS message is received */
   const wsDataError   = ref(false)
 
+  /** Non-null when showing cached (offline) data. ISO timestamp string. */
+  const dailyCachedAt   = ref(null)
+  const monthlyCachedAt = ref(null)
+
+  const CACHE_KEY_DAILY   = 'dash_cache_daily'
+  const CACHE_KEY_MONTHLY = 'dash_cache_monthly'
+
   // ── Derived helpers ────────────────────────────────────────────────── //
   const revenueByMethodEntries = computed(() =>
     Object.entries(daily.value?.revenueByMethod ?? {})
@@ -38,7 +45,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadingDaily.value = true
     try {
       const { data } = await api.get('/dashboard/daily', { params: { date } })
-      daily.value = data
+      daily.value         = data
+      dailyCachedAt.value = null
+      try { localStorage.setItem(CACHE_KEY_DAILY, JSON.stringify({ data, savedAt: new Date().toISOString() })) } catch {}
+    } catch {
+      const raw = localStorage.getItem(CACHE_KEY_DAILY)
+      if (raw) {
+        const { data, savedAt } = JSON.parse(raw)
+        daily.value         = data
+        dailyCachedAt.value = savedAt
+      }
     } finally {
       loadingDaily.value = false
     }
@@ -49,7 +65,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadingMonthly.value = true
     try {
       const { data } = await api.get('/dashboard/monthly', { params: { month } })
-      monthly.value = data
+      monthly.value         = data
+      monthlyCachedAt.value = null
+      try { localStorage.setItem(CACHE_KEY_MONTHLY, JSON.stringify({ data, savedAt: new Date().toISOString() })) } catch {}
+    } catch {
+      const raw = localStorage.getItem(CACHE_KEY_MONTHLY)
+      if (raw) {
+        const { data, savedAt } = JSON.parse(raw)
+        monthly.value         = data
+        monthlyCachedAt.value = savedAt
+      }
     } finally {
       loadingMonthly.value = false
     }
@@ -106,6 +131,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   return {
     daily, monthly, loadingDaily, loadingMonthly,
     selectedDate, selectedMonth, wsConnected, wsDataError,
+    dailyCachedAt, monthlyCachedAt,
     revenueByMethodEntries, revenueByServiceEntries,
     loadDaily, loadMonthly,
     connectWebSocket, disconnectWebSocket,

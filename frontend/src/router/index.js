@@ -59,6 +59,18 @@ const routes = [
         meta: { roles: ['MANAGER'] }
       },
       {
+        path: 'transactions',
+        name: 'Transactions',
+        component: () => import('@/views/TransactionsView.vue'),
+        meta: { roles: ['MANAGER', 'PARTNER'] }
+      },
+      {
+        path: 'expenses',
+        name: 'Expenses',
+        component: () => import('@/views/ExpensesView.vue'),
+        meta: { roles: ['MANAGER'] }
+      },
+      {
         path: 'stock',
         name: 'Stock',
         component: () => import('@/views/StockView.vue'),
