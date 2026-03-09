@@ -90,6 +90,9 @@
               </p>
               <p v-if="client.expiresAt" class="text-xs mt-0.5" :class="expiryClass(client.expiresAt)">
                 exp. {{ formatDate(client.expiresAt) }}
+                <span v-if="expiryStatus(client.expiresAt)" class="font-semibold">
+                  · {{ expiryStatus(client.expiresAt) }}
+                </span>
               </p>
             </div>
           </div>
@@ -195,6 +198,13 @@ function expiryClass(iso) {
   if (days <= 0) return 'text-red-400'
   if (days <= 5) return 'text-amber-400'
   return 'text-slate-400'
+}
+
+function expiryStatus(iso) {
+  const days = Math.ceil((new Date(iso) - Date.now()) / 86_400_000)
+  if (days <= 0) return 'Expiré'
+  if (days <= 5) return 'Bientôt'
+  return null
 }
 
 function needsAlert(client) {

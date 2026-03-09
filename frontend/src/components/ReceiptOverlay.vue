@@ -1,6 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-end bg-black/60" @click.self="caisse.closeReceipt()">
-    <div class="receipt-print-area w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 animate-slide-up">
+    <div ref="trapRef" role="dialog" aria-modal="true" aria-label="Reçu de transaction"
+         class="receipt-print-area w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 animate-slide-up">
 
       <!-- Status badge -->
       <div class="flex justify-center">
@@ -79,12 +80,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useCaisseStore } from '@/stores/caisse'
 import { PAYMENT_LABELS } from '@/constants'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
-const caisse = useCaisseStore()
-const tx     = computed(() => caisse.lastTransaction)
+const caisse  = useCaisseStore()
+const tx      = computed(() => caisse.lastTransaction)
+const trapRef = ref(null)
+
+useFocusTrap(trapRef)
 
 function formatPrice(fcfa) {
   return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA'

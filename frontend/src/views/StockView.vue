@@ -78,6 +78,7 @@
           <div class="flex items-center gap-2 min-w-0">
             <span
               v-if="stock.isLow(product)"
+              aria-hidden="true"
               class="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse"
             />
             <p class="font-semibold truncate">{{ product.name }}</p>
@@ -109,16 +110,25 @@
               {{ formatQty(product.stock) }} {{ product.unit }}
             </span>
           </div>
-          <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-2 bg-slate-700 rounded-full overflow-hidden"
+               :aria-label="`Niveau de stock : ${stockLevelLabel(product)}`" role="img">
             <div
               class="h-full rounded-full transition-all duration-500"
               :class="stock.stockColor(product)"
               :style="{ width: (stock.stockRatio(product) * 100).toFixed(0) + '%' }"
+              aria-hidden="true"
             />
           </div>
           <div class="flex justify-between text-xs text-slate-500">
             <span>Seuil alerte : {{ formatQty(product.alertThreshold) }} {{ product.unit }}</span>
-            <span v-if="stock.isLow(product)" class="text-red-400 font-medium">Stock bas !</span>
+            <span
+              class="font-medium"
+              :class="{
+                'text-red-400':   stock.isLow(product),
+                'text-amber-400': !stock.isLow(product) && Number(product.stock) <= Number(product.alertThreshold) * 2,
+                'text-green-400': Number(product.stock) > Number(product.alertThreshold) * 2
+              }"
+            >{{ stockLevelLabel(product) }}</span>
           </div>
         </div>
       </div>
@@ -413,5 +423,13 @@ async function doDeactivate() {
 function formatQty(val) {
   const n = Number(val)
   return Number.isInteger(n) ? n : n.toFixed(3).replace(/\.?0+$/, '')
+}
+
+function stockLevelLabel(product) {
+  const s = Number(product.stock)
+  const t = Number(product.alertThreshold)
+  if (s <= t)     return 'Critique'
+  if (s <= t * 2) return 'Modéré'
+  return 'Élevé'
 }
 </script>

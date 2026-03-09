@@ -1,7 +1,8 @@
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4">
-      <div class="bg-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 text-center shadow-xl">
+      <div ref="trapRef" role="alertdialog" aria-modal="true" aria-labelledby="session-expired-title"
+           class="bg-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 text-center shadow-xl">
 
         <!-- Icon -->
         <div class="flex justify-center">
@@ -14,7 +15,7 @@
         </div>
 
         <div>
-          <h3 class="text-lg font-bold text-white">Session expirée</h3>
+          <h3 id="session-expired-title" class="text-lg font-bold text-white">Session expirée</h3>
           <p class="text-slate-400 text-sm mt-1">
             Votre session a expiré. Veuillez vous reconnecter pour continuer.
           </p>
@@ -32,11 +33,16 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
-const auth   = useAuthStore()
-const router = useRouter()
+const auth    = useAuthStore()
+const router  = useRouter()
+const trapRef = ref(null)
+
+useFocusTrap(trapRef)
 
 function reconnect() {
   auth.logout()

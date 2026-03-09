@@ -2,7 +2,8 @@
   <div class="p-4 space-y-4">
     <!-- Header -->
     <div class="flex items-center gap-3">
-      <RouterLink to="/clients" class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
+      <RouterLink to="/clients" aria-label="Retour à la liste des clients"
+                  class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>

@@ -1,8 +1,10 @@
 <template>
-  <div class="fixed inset-0 z-50 flex flex-col bg-slate-900">
+  <div ref="trapRef" role="dialog" aria-modal="true" aria-label="Recherche client"
+       class="fixed inset-0 z-50 flex flex-col bg-slate-900">
     <!-- Header -->
     <div class="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
-      <button @click="emit('close')" class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
+      <button @click="emit('close')" aria-label="Fermer la recherche"
+              class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
@@ -70,6 +72,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const emit = defineEmits(['select', 'close'])
 
@@ -78,8 +81,12 @@ const results     = ref([])
 const loading     = ref(false)
 const searchError = ref('')
 const searchInput = ref(null)
+const trapRef     = ref(null)
 let debounce
 
+useFocusTrap(trapRef)
+
+// searchInput already focused by useFocusTrap (it's the first focusable element)
 onMounted(() => searchInput.value?.focus())
 
 function onInput() {

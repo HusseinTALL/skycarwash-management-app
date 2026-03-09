@@ -163,6 +163,7 @@
           <div v-if="u.role !== 'MANAGER'" class="flex gap-2 shrink-0">
             <button
               @click="toggleStatus(u)"
+              :aria-label="u.active ? `Désactiver le compte de ${u.name}` : `Réactiver le compte de ${u.name}`"
               class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300"
               :class="u.active
                 ? 'hover:bg-red-900/40 hover:text-red-400'
@@ -172,6 +173,7 @@
             </button>
             <button
               @click="resetPassword(u)"
+              :aria-label="`Réinitialiser le mot de passe de ${u.name}`"
               class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-sky-900/40 hover:text-sky-400"
             >
               Reset MDP
