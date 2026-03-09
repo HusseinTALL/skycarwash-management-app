@@ -62,13 +62,20 @@ public class DashboardService {
         int lastWeekVehicles = lastWeekTxs.size();
         int lastWeekRevenue  = lastWeekTxs.stream().mapToInt(Transaction::getAmount).sum();
 
-        // Recent 10 transactions (including cancelled) for the activity feed
-        List<TransactionResponse> recent = transactionRepository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(dayStart, dayEnd)
-                .stream()
+        // All transactions for the day (including cancelled) — for activity feed + closing report
+        List<Transaction> allDayTxs = transactionRepository
+                .findByCreatedAtBetweenOrderByCreatedAtDesc(dayStart, dayEnd);
+
+        List<TransactionResponse> recent = allDayTxs.stream()
                 .limit(10)
                 .map(this::toResponse)
                 .toList();
+
+        int cancelledCount  = (int) allDayTxs.stream().filter(t -> t.getCancelledAt() != null).count();
+        int cancelledAmount = allDayTxs.stream()
+                .filter(t -> t.getCancelledAt() != null)
+                .mapToInt(Transaction::getAmount)
+                .sum();
 
         return new DailyDashboardDto(
                 date, vehiclesWashed, totalRevenue,
@@ -76,7 +83,9 @@ public class DashboardService {
                 lastWeekVehicles, lastWeekRevenue,
                 totalRevenue - lastWeekRevenue,
                 vehiclesWashed - lastWeekVehicles,
-                recent
+                recent,
+                cancelledCount,
+                cancelledAmount
         );
     }
 

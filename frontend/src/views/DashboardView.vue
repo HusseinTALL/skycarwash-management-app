@@ -1,6 +1,18 @@
 <template>
   <div class="p-4 space-y-4 pb-6">
 
+    <!-- Stale cache banner (feature 8) -->
+    <div
+      v-if="(activeTab === 'daily' && dash.dailyCachedAt) || (activeTab === 'monthly' && dash.monthlyCachedAt)"
+      class="flex items-center gap-2 bg-amber-900/30 border border-amber-700/50 rounded-xl px-4 py-2 text-amber-300 text-xs"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Données en cache ({{ formatCacheTime(activeTab === 'daily' ? dash.dailyCachedAt : dash.monthlyCachedAt) }}) — mode hors-ligne
+    </div>
+
     <!-- Header + WS indicator -->
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold">Dashboard</h2>
@@ -145,6 +157,18 @@
           </div>
         </div>
 
+        <!-- Closing report button (feature 5) -->
+        <button
+          @click="showClosingReport = true"
+          class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Imprimer la clôture du jour
+        </button>
+
       </template>
     </template>
 
@@ -192,6 +216,20 @@
               {{ dash.monthly.expiringIn7Days }} expirent bientôt
             </p>
           </div>
+
+          <!-- Expenses card (feature 9) -->
+          <div class="card col-span-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-400 uppercase tracking-wide">Dépenses du mois</p>
+                <p v-if="loadingExpenses" class="text-slate-500 text-sm mt-1">Chargement...</p>
+                <p v-else class="text-2xl font-bold mt-1 text-red-400">
+                  {{ dash.formatFcfa(monthlyExpenseTotal) }}
+                </p>
+              </div>
+              <RouterLink to="/expenses" class="text-xs text-sky-400 underline">Voir détail</RouterLink>
+            </div>
+          </div>
         </div>
 
         <!-- 30-day revenue curve -->
@@ -225,12 +263,105 @@
     </template>
 
   </div>
+
+  <!-- ═══════════════ CLOSING REPORT MODAL (feature 5) ═══════════════ -->
+  <Teleport to="body">
+    <div
+      v-if="showClosingReport && dash.daily"
+      class="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 print:hidden"
+      @click.self="showClosingReport = false"
+    >
+      <div class="bg-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <!-- Modal header (screen only) -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-700 print:hidden">
+          <h3 class="font-semibold">Clôture du {{ formatDateFr(dash.daily.date) }}</h3>
+          <div class="flex gap-2">
+            <button
+              @click="doPrint"
+              class="btn-primary text-sm py-1.5 px-4"
+            >Imprimer</button>
+            <button @click="showClosingReport = false" class="btn-secondary text-sm py-1.5 px-3">✕</button>
+          </div>
+        </div>
+
+        <!-- Report content -->
+        <div id="closing-report-content" class="p-5 space-y-4 text-sm">
+          <div class="text-center space-y-0.5">
+            <p class="text-lg font-bold">SkyCarWash</p>
+            <p class="text-slate-400 text-xs">Clôture de caisse — {{ formatDateFr(dash.daily.date) }}</p>
+          </div>
+
+          <hr class="border-slate-700" />
+
+          <!-- Summary -->
+          <div class="space-y-2">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Véhicules lavés</span>
+              <span class="font-bold">{{ dash.daily.vehiclesWashed }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Transactions annulées</span>
+              <span :class="dash.daily.cancelledCount > 0 ? 'text-red-400 font-medium' : 'font-bold'">
+                {{ dash.daily.cancelledCount }}
+                <span v-if="dash.daily.cancelledCount > 0" class="text-xs">({{ dash.formatFcfa(dash.daily.cancelledAmount) }})</span>
+              </span>
+            </div>
+          </div>
+
+          <hr class="border-slate-700" />
+
+          <!-- By payment method -->
+          <div class="space-y-2">
+            <p class="font-semibold text-slate-300">Recettes par mode de paiement</p>
+            <div
+              v-for="[method, amount] in dash.revenueByMethodEntries"
+              :key="method"
+              class="flex justify-between"
+            >
+              <span class="text-slate-400">{{ METHOD_LABELS[method] ?? method }}</span>
+              <span class="font-semibold">{{ dash.formatFcfa(amount) }}</span>
+            </div>
+            <p v-if="!dash.revenueByMethodEntries.length" class="text-slate-500 text-center">Aucune transaction</p>
+          </div>
+
+          <hr class="border-slate-700" />
+
+          <!-- By service -->
+          <div class="space-y-2">
+            <p class="font-semibold text-slate-300">Recettes par service</p>
+            <div
+              v-for="[service, amount] in dash.revenueByServiceEntries"
+              :key="service"
+              class="flex justify-between"
+            >
+              <span class="text-slate-400 truncate">{{ service }}</span>
+              <span class="font-semibold shrink-0 ml-3">{{ dash.formatFcfa(amount) }}</span>
+            </div>
+          </div>
+
+          <hr class="border-slate-700" />
+
+          <!-- Total -->
+          <div class="flex justify-between text-base font-bold">
+            <span>TOTAL NET</span>
+            <span class="text-brand-400">{{ dash.formatFcfa(dash.daily.totalRevenue) }}</span>
+          </div>
+
+          <p class="text-xs text-slate-500 text-center pt-2">
+            Imprimé le {{ new Date().toLocaleString('fr-FR') }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
 import RevenueChart from '@/components/RevenueChart.vue'
+import api from '@/api/axios'
 
 const dash = useDashboardStore()
 
@@ -260,9 +391,30 @@ const METHOD_BADGE = {
   ABONNEMENT: 'bg-purple-900/50 text-purple-300'
 }
 
-const activeTab     = ref('daily')
-const selectedDate  = ref(dash.selectedDate)
-const selectedMonth = ref(dash.selectedMonth)
+const activeTab          = ref('daily')
+const selectedDate       = ref(dash.selectedDate)
+const selectedMonth      = ref(dash.selectedMonth)
+const showClosingReport  = ref(false)
+
+// ── Expenses (feature 9 - monthly widget) ─── //
+const monthlyExpenseTotal = ref(0)
+const loadingExpenses     = ref(false)
+
+async function loadMonthlyExpenses(month) {
+  loadingExpenses.value = true
+  try {
+    const { data } = await api.get('/expenses', { params: { month } })
+    monthlyExpenseTotal.value = data.reduce((sum, e) => sum + e.amount, 0)
+  } catch {
+    monthlyExpenseTotal.value = 0
+  } finally {
+    loadingExpenses.value = false
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'monthly') loadMonthlyExpenses(selectedMonth.value)
+})
 
 onMounted(() => {
   dash.loadDaily()
@@ -289,4 +441,44 @@ function formatTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
+
+function formatDateFr(iso) {
+  return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatCacheTime(iso) {
+  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function doPrint() {
+  window.print()
+}
 </script>
+
+<style>
+@media print {
+  body > * { display: none !important; }
+  #closing-report-content {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: white;
+    color: black;
+    padding: 2rem;
+    font-size: 14px;
+  }
+  #closing-report-content .text-slate-400,
+  #closing-report-content .text-slate-300,
+  #closing-report-content .text-slate-500 {
+    color: #555 !important;
+  }
+  #closing-report-content .text-brand-400,
+  #closing-report-content .text-green-400 {
+    color: #000 !important;
+    font-weight: bold;
+  }
+  #closing-report-content hr {
+    border-color: #ccc;
+  }
+}
+</style>

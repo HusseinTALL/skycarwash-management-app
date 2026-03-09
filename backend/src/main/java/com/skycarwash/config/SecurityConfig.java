@@ -82,6 +82,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/history").hasAnyRole("MANAGER", "PARTNER")
                         // Dashboard – manager + partner
                         .requestMatchers("/api/dashboard/**").hasAnyRole("MANAGER", "PARTNER")
+                        // Expenses – manager only
+                        .requestMatchers("/api/expenses/**").hasRole("MANAGER")
                         // User management – manager only
                         .requestMatchers("/api/manager/**").hasRole("MANAGER")
                         // Everything else requires authentication

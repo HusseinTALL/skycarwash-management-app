@@ -124,6 +124,18 @@
         <p v-if="rechargeSuccess" class="text-green-400 text-sm">{{ rechargeSuccess }}</p>
       </div>
 
+      <!-- QR Card button (feature 6) -->
+      <button
+        @click="openQrCard"
+        class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+        </svg>
+        Carte QR client
+      </button>
+
       <!-- Deactivate -->
       <button
         v-if="store.current.active"
@@ -143,6 +155,42 @@
       @cancel="showDeactivateModal = false"
     />
 
+    <!-- QR Card modal (feature 6) -->
+    <Teleport to="body">
+      <div
+        v-if="showQrModal && store.current"
+        class="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 print:hidden"
+        @click.self="showQrModal = false"
+      >
+        <div class="bg-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-sm">
+          <div class="flex items-center justify-between p-4 border-b border-slate-700 print:hidden">
+            <h3 class="font-semibold">Carte client</h3>
+            <div class="flex gap-2">
+              <button @click="$el.ownerDocument.defaultView.print()" class="btn-primary text-sm py-1.5 px-4">Imprimer</button>
+              <button @click="showQrModal = false" class="btn-secondary text-sm py-1.5 px-3">✕</button>
+            </div>
+          </div>
+
+          <!-- Card content -->
+          <div id="qr-card-content" class="p-6 flex flex-col items-center gap-4">
+            <p class="text-xl font-bold text-center">{{ store.current.name }}</p>
+            <p class="text-slate-400 text-sm">{{ store.current.phone }}</p>
+            <span
+              class="text-xs px-3 py-1 rounded-full font-semibold"
+              :class="{
+                'bg-blue-900 text-blue-300':     store.current.type === 'CARTE',
+                'bg-purple-900 text-purple-300': store.current.type === 'BOUCLIER',
+                'bg-amber-900 text-amber-300':   store.current.type === 'VIP'
+              }"
+            >{{ store.current.type }}</span>
+            <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR Code" class="w-48 h-48 bg-white p-2 rounded-xl" />
+            <p v-else class="text-slate-500 text-sm">Génération du QR...</p>
+            <p class="text-xs text-slate-500 text-center">Présentez cette carte à la caisse</p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <div v-else class="card text-center py-12 text-slate-400">
       Client introuvable
     </div>
@@ -154,6 +202,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
 import ConfirmModal from '@/components/ConfirmModal.vue'
+import QRCode from 'qrcode'
 
 const route  = useRoute()
 const router = useRouter()
@@ -164,8 +213,23 @@ const recharging         = ref(false)
 const rechargeError      = ref('')
 const rechargeSuccess    = ref('')
 const showDeactivateModal = ref(false)
+const showQrModal        = ref(false)
+const qrDataUrl          = ref(null)
 
 onMounted(() => store.loadById(route.params.id))
+
+async function openQrCard() {
+  showQrModal.value = true
+  qrDataUrl.value   = null
+  try {
+    qrDataUrl.value = await QRCode.toDataURL(store.current.phone, {
+      width: 300, margin: 2,
+      color: { dark: '#000000', light: '#ffffff' }
+    })
+  } catch (err) {
+    console.error('QR generation failed', err)
+  }
+}
 
 async function recharge() {
   if (recharging.value) return
