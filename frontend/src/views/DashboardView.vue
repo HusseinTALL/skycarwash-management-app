@@ -4,11 +4,24 @@
     <!-- Header + WS indicator -->
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold">Dashboard</h2>
-      <div class="flex items-center gap-1.5 text-xs"
-           :class="dash.wsConnected ? 'text-green-400' : 'text-slate-500'">
-        <span class="w-2 h-2 rounded-full"
-              :class="dash.wsConnected ? 'bg-green-400 animate-pulse' : 'bg-slate-500'"/>
-        {{ dash.wsConnected ? 'En direct' : 'Hors-ligne' }}
+      <div class="flex items-center gap-2">
+        <span
+          v-if="dash.wsDataError"
+          class="text-xs text-amber-400 flex items-center gap-1"
+          title="Données temps réel malformées"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          Données incorrectes
+        </span>
+        <div class="flex items-center gap-1.5 text-xs"
+             :class="dash.wsConnected ? 'text-green-400' : 'text-slate-500'">
+          <span class="w-2 h-2 rounded-full"
+                :class="dash.wsConnected ? 'bg-green-400 animate-pulse' : 'bg-slate-500'"/>
+          {{ dash.wsConnected ? 'En direct' : 'Hors-ligne' }}
+        </div>
       </div>
     </div>
 

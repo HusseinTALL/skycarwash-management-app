@@ -49,10 +49,26 @@
       <p class="text-sm mt-1">Ajoutez vos produits et définissez les seuils d'alerte</p>
     </div>
 
-    <!-- Product list -->
+    <!-- Product list + sort + pagination -->
     <div v-else class="space-y-3">
+
+      <!-- Sort controls -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-slate-500">Trier :</span>
+        <button
+          v-for="col in STOCK_SORT_COLS"
+          :key="col.key"
+          @click="toggleStockSort(col.key)"
+          class="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
+          :class="stockSortKey === col.key ? 'bg-brand-500/20 text-brand-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'"
+        >
+          {{ col.label }}
+          <span v-if="stockSortKey === col.key">{{ stockSortDir === 'asc' ? '↑' : '↓' }}</span>
+        </button>
+      </div>
+
       <div
-        v-for="product in stock.products"
+        v-for="product in paginatedProducts"
         :key="product.id"
         class="card space-y-2"
         :class="stock.isLow(product) ? 'ring-1 ring-red-700' : ''"
@@ -105,6 +121,25 @@
             <span v-if="stock.isLow(product)" class="text-red-400 font-medium">Stock bas !</span>
           </div>
         </div>
+      </div>
+
+      <!-- Stock pagination -->
+      <div v-if="stockTotalPages > 1" class="flex items-center justify-between text-sm">
+        <button
+          @click="stockPage--"
+          :disabled="stockPage === 1"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          ← Préc.
+        </button>
+        <span class="text-slate-400 text-xs">{{ stockPage }} / {{ stockTotalPages }}</span>
+        <button
+          @click="stockPage++"
+          :disabled="stockPage === stockTotalPages"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          Suiv. →
+        </button>
       </div>
     </div>
 
@@ -231,11 +266,51 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useStockStore } from '@/stores/stock'
 import ConfirmModal from '@/components/ConfirmModal.vue'
+import { STOCK_UNITS } from '@/constants'
 
 const stock = useStockStore()
+
+// ── Sorting ──────────────────────────────────────────────────────── //
+const STOCK_SORT_COLS = [
+  { key: 'name',  label: 'Nom' },
+  { key: 'stock', label: 'Stock' }
+]
+const stockSortKey = ref('name')
+const stockSortDir = ref('asc')
+
+function toggleStockSort(key) {
+  if (stockSortKey.value === key) {
+    stockSortDir.value = stockSortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    stockSortKey.value = key
+    stockSortDir.value = 'asc'
+  }
+  stockPage.value = 1
+}
+
+// ── Pagination ───────────────────────────────────────────────────── //
+const STOCK_PAGE_SIZE = 10
+const stockPage       = ref(1)
+
+const sortedProducts = computed(() => {
+  const list = [...stock.products]
+  list.sort((a, b) => {
+    let cmp = 0
+    if (stockSortKey.value === 'name')  cmp = a.name.localeCompare(b.name, 'fr')
+    if (stockSortKey.value === 'stock') cmp = Number(a.stock) - Number(b.stock)
+    return stockSortDir.value === 'asc' ? cmp : -cmp
+  })
+  return list
+})
+
+const stockTotalPages  = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / STOCK_PAGE_SIZE)))
+const paginatedProducts = computed(() => {
+  const start = (stockPage.value - 1) * STOCK_PAGE_SIZE
+  return sortedProducts.value.slice(start, start + STOCK_PAGE_SIZE)
+})
 
 onMounted(() => stock.loadAll())
 
@@ -258,6 +333,7 @@ function closeRestockModal() {
 }
 
 async function confirmRestock() {
+  if (restocking.value) return
   if (!restockQty.value || restockQty.value <= 0) return
   restockError.value = ''
   restocking.value   = true
@@ -272,7 +348,7 @@ async function confirmRestock() {
 }
 
 // ── Add / Edit product form ───────────────────────────────────────── //
-const UNITS = ['L', 'kg', 'g', 'unité']
+const UNITS = STOCK_UNITS
 
 const showProductForm    = ref(false)
 const editingProduct     = ref(null)
@@ -305,6 +381,7 @@ function closeProductForm() {
 }
 
 async function submitProductForm() {
+  if (productFormSaving.value) return
   if (!productForm.value.name.trim()) return
   productFormError.value = ''
   productFormSaving.value = true

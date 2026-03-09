@@ -85,6 +85,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
+import { CLIENT_TYPE_HINTS, PHONE_REGEX } from '@/constants'
 
 const route    = useRoute()
 const router   = useRouter()
@@ -100,11 +101,6 @@ const TYPES = [
   { value: 'VIP',      label: 'VIP'            }
 ]
 
-const TYPE_HINTS = {
-  CARTE:    'Prépayé — décrémenté à chaque lavage',
-  BOUCLIER: 'Mensuel — 2 lavages + protections inclus',
-  VIP:      'Tarif négocié — flotte ou entreprise'
-}
 
 const form = ref({
   name:      '',
@@ -115,7 +111,7 @@ const form = ref({
   active:    true
 })
 
-const typeHint = computed(() => TYPE_HINTS[form.value.type] ?? '')
+const typeHint = computed(() => CLIENT_TYPE_HINTS[form.value.type] ?? '')
 
 onMounted(async () => {
   if (isEdit.value) {
@@ -135,12 +131,18 @@ onMounted(async () => {
 })
 
 async function submit() {
+  if (submitting.value) return
   error.value    = ''
+  const trimmedPhone = form.value.phone.trim()
+  if (!PHONE_REGEX.test(trimmedPhone)) {
+    error.value = 'Numéro de téléphone invalide (ex : +22612345678)'
+    return
+  }
   submitting.value = true
 
   const payload = {
     name:      form.value.name.trim(),
-    phone:     form.value.phone.trim(),
+    phone:     trimmedPhone,
     type:      form.value.type,
     balance:   form.value.type === 'BOUCLIER' ? 0 : form.value.balance,
     expiresAt: form.value.expiresAt || null,

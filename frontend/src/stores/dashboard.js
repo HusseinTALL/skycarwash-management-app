@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { Client as StompClient } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import api from '@/api/axios'
+import { WS_EVENTS } from '@/constants'
 
 export const useDashboardStore = defineStore('dashboard', () => {
 
@@ -17,6 +18,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   /** Whether the dashboard is receiving live WebSocket updates */
   const wsConnected   = ref(false)
+  /** Set to true when a malformed WS message is received */
+  const wsDataError   = ref(false)
 
   // ── Derived helpers ────────────────────────────────────────────────── //
   const revenueByMethodEntries = computed(() =>
@@ -67,11 +70,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
         stompClient.subscribe('/topic/dashboard', (msg) => {
           try {
             const event = JSON.parse(msg.body)
+            wsDataError.value = false
             // Refresh the current day's data on any transaction event
-            if (['transaction.created', 'transaction.cancelled'].includes(event.event)) {
+            if ([WS_EVENTS.TRANSACTION_CREATED, WS_EVENTS.TRANSACTION_CANCELLED].includes(event.event)) {
               loadDaily(selectedDate.value)
             }
-          } catch { /* ignore parse errors */ }
+          } catch (err) {
+            console.warn('[WS] Malformed dashboard event — could not parse message:', err, msg.body)
+            wsDataError.value = true
+          }
         })
       },
       onDisconnect: () => { wsConnected.value = false },
@@ -98,7 +105,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   return {
     daily, monthly, loadingDaily, loadingMonthly,
-    selectedDate, selectedMonth, wsConnected,
+    selectedDate, selectedMonth, wsConnected, wsDataError,
     revenueByMethodEntries, revenueByServiceEntries,
     loadDaily, loadMonthly,
     connectWebSocket, disconnectWebSocket,

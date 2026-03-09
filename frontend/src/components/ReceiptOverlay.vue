@@ -81,16 +81,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useCaisseStore } from '@/stores/caisse'
+import { PAYMENT_LABELS } from '@/constants'
 
 const caisse = useCaisseStore()
 const tx     = computed(() => caisse.lastTransaction)
-
-const PAYMENT_LABELS = {
-  CASH:        'Espèces',
-  ORANGE:      'Orange Money',
-  MOOV:        'Moov Money',
-  ABONNEMENT:  'Abonnement'
-}
 
 function formatPrice(fcfa) {
   return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA'

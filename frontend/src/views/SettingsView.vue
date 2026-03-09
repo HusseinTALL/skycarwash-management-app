@@ -137,9 +137,10 @@
       >
         Aucun utilisateur trouvé
       </p>
-      <ul v-else class="divide-y divide-slate-700">
+      <template v-else>
+      <ul class="divide-y divide-slate-700">
         <li
-          v-for="u in filteredUsers"
+          v-for="u in paginatedUsers"
           :key="u.id"
           class="flex items-center justify-between py-3 gap-2"
         >
@@ -178,6 +179,26 @@
           </div>
         </li>
       </ul>
+
+      <!-- Users pagination -->
+      <div v-if="userTotalPages > 1" class="flex items-center justify-between text-sm pt-1">
+        <button
+          @click="userPage--"
+          :disabled="userPage === 1"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          ← Préc.
+        </button>
+        <span class="text-slate-400 text-xs">{{ userPage }} / {{ userTotalPages }}</span>
+        <button
+          @click="userPage++"
+          :disabled="userPage === userTotalPages"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          Suiv. →
+        </button>
+      </div>
+      </template>
     </div>
 
     <!-- ── À propos ──────────────────────────────────────────────────── -->
@@ -261,8 +282,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
+import { PHONE_REGEX } from '@/constants'
 
 // ── State ──────────────────────────────────────────────────────────── //
 const services        = ref([])
@@ -278,12 +300,20 @@ const userFormError = ref('')
 const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
 const userSearch    = ref('')
 
+const USER_PAGE_SIZE = 10
+const userPage      = ref(1)
+
 const filteredUsers = computed(() => {
   const q = userSearch.value.trim().toLowerCase()
-  if (!q) return users.value
-  return users.value.filter(u =>
-    u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q)
-  )
+  return q
+    ? users.value.filter(u => u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q))
+    : users.value
+})
+
+const userTotalPages  = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / USER_PAGE_SIZE)))
+const paginatedUsers  = computed(() => {
+  const start = (userPage.value - 1) * USER_PAGE_SIZE
+  return filteredUsers.value.slice(start, start + USER_PAGE_SIZE)
 })
 
 const revealedPassword      = ref(null)
@@ -327,6 +357,8 @@ async function loadUsers() {
   }
 }
 
+watch(userSearch, () => { userPage.value = 1 })
+
 onMounted(() => { loadServices(); loadUsers() })
 
 // ── Modal helpers ────────────────────────────────────────────────────── //
@@ -357,9 +389,13 @@ function toggleUserForm() {
 }
 
 async function createUser() {
+  if (creatingUser.value) return
   userFormError.value = ''
-  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.';       return }
-  if (!userForm.value.phone.trim()) { userFormError.value = 'Le téléphone est requis.'; return }
+  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.'; return }
+  if (!PHONE_REGEX.test(userForm.value.phone.trim())) {
+    userFormError.value = 'Numéro invalide (ex : +22612345678)'
+    return
+  }
 
   creatingUser.value = true
   try {
@@ -401,6 +437,7 @@ async function resetPassword(user) {
 
 // ── Save (create or update) ──────────────────────────────────────────── //
 async function saveService() {
+  if (saving.value) return
   formError.value = ''
   if (!form.value.name.trim()) { formError.value = 'Le nom est requis.'; return }
   if (!form.value.price || form.value.price <= 0) { formError.value = 'Le prix doit être > 0.'; return }

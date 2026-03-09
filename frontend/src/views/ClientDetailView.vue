@@ -159,6 +159,7 @@ const showDeactivateModal = ref(false)
 onMounted(() => store.loadById(route.params.id))
 
 async function recharge() {
+  if (recharging.value) return
   rechargeError.value   = ''
   rechargeSuccess.value = ''
   recharging.value      = true
