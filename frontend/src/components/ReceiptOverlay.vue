@@ -71,10 +71,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useCaisseStore } from '@/stores/caisse'
 
 const caisse = useCaisseStore()
-const tx     = caisse.lastTransaction
+const tx     = computed(() => caisse.lastTransaction)
 
 const PAYMENT_LABELS = {
   CASH:        'Espèces',

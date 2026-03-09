@@ -12,6 +12,7 @@
       </div>
 
       <p v-if="loadingServices" class="text-slate-500 text-sm">Chargement…</p>
+      <p v-else-if="servicesError" class="text-red-400 text-sm">{{ servicesError }}</p>
 
       <ul v-else class="divide-y divide-slate-700">
         <li
@@ -101,6 +102,7 @@
 
       <!-- Liste des utilisateurs -->
       <p v-if="loadingUsers" class="text-slate-500 text-sm">Chargement…</p>
+      <p v-else-if="usersError" class="text-red-400 text-sm">{{ usersError }}</p>
       <ul v-else class="divide-y divide-slate-700">
         <li
           v-for="u in users"
@@ -244,6 +246,9 @@ const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
 const revealedPassword      = ref(null)
 const revealedPasswordLabel = ref('')
 
+const servicesError = ref('')
+const usersError    = ref('')
+
 const showServiceModal = ref(false)
 const editingService   = ref(null)
 const saving           = ref(false)
@@ -254,11 +259,12 @@ const form = ref({ name: '', price: 0, category: '', active: true })
 // ── Load services ───────────────────────────────────────────────────── //
 async function loadServices() {
   loadingServices.value = true
+  servicesError.value = ''
   try {
     const { data } = await api.get('/services')
     services.value = data
-  } catch {
-    // silently fail — user sees empty list
+  } catch (err) {
+    servicesError.value = err.response?.data?.error || 'Impossible de charger les services.'
   } finally {
     loadingServices.value = false
   }
@@ -267,11 +273,12 @@ async function loadServices() {
 // ── Load users ──────────────────────────────────────────────────────── //
 async function loadUsers() {
   loadingUsers.value = true
+  usersError.value = ''
   try {
     const { data } = await api.get('/manager/users')
     users.value = data
-  } catch {
-    // silently fail
+  } catch (err) {
+    usersError.value = err.response?.data?.error || 'Impossible de charger les utilisateurs.'
   } finally {
     loadingUsers.value = false
   }

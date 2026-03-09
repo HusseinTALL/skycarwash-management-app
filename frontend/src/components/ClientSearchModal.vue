@@ -26,6 +26,8 @@
     <div class="flex-1 overflow-y-auto px-4 py-2 space-y-2">
       <p v-if="loading" class="text-center text-slate-400 py-8 text-sm">Recherche...</p>
 
+      <p v-else-if="searchError" class="text-center text-red-400 py-8 text-sm">{{ searchError }}</p>
+
       <p v-else-if="query.length >= 2 && results.length === 0"
          class="text-center text-slate-400 py-8 text-sm">
         Aucun client trouvé
@@ -74,6 +76,7 @@ const emit = defineEmits(['select', 'close'])
 const query       = ref('')
 const results     = ref([])
 const loading     = ref(false)
+const searchError = ref('')
 const searchInput = ref(null)
 let debounce
 
@@ -81,17 +84,20 @@ onMounted(() => searchInput.value?.focus())
 
 function onInput() {
   clearTimeout(debounce)
+  searchError.value = ''
   if (query.value.length < 2) { results.value = []; return }
   debounce = setTimeout(doSearch, 300)
 }
 
 async function doSearch() {
   loading.value = true
+  searchError.value = ''
   try {
     const { data } = await api.get('/clients/search', { params: { q: query.value } })
     results.value = data
   } catch {
     results.value = []
+    searchError.value = 'Erreur lors de la recherche. Veuillez réessayer.'
   } finally {
     loading.value = false
   }
