@@ -49,6 +49,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/services/**").authenticated()
                         // Product CRUD – manager only
                         .requestMatchers("/api/products/**").hasRole("MANAGER")
+                        // Clients – search open to EMPLOYEE (caisse); full CRUD to MANAGER
+                        .requestMatchers(HttpMethod.GET,    "/api/clients/search").hasAnyRole("EMPLOYEE", "MANAGER")
+                        .requestMatchers(HttpMethod.GET,    "/api/clients/**").hasAnyRole("MANAGER", "PARTNER")
+                        .requestMatchers(HttpMethod.POST,   "/api/clients/**").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.PUT,    "/api/clients/**").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/clients/**").hasRole("MANAGER")
                         // Transactions – employee + manager can create/cancel; manager can read today
                         .requestMatchers(HttpMethod.POST, "/api/transactions/**").hasAnyRole("EMPLOYEE", "MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/today").hasAnyRole("MANAGER", "PARTNER")

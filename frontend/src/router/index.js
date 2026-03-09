@@ -53,6 +53,12 @@ const routes = [
         meta: { roles: ['MANAGER'] }
       },
       {
+        path: 'clients/:id/edit',
+        name: 'ClientEdit',
+        component: () => import('@/views/ClientFormView.vue'),
+        meta: { roles: ['MANAGER'] }
+      },
+      {
         path: 'stock',
         name: 'Stock',
         component: () => import('@/views/StockView.vue'),

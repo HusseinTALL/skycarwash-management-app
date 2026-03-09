@@ -11,6 +11,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     Optional<Client> findByPhone(String phone);
 
+    List<Client> findAllByActiveTrueOrderByNameAsc();
+
     List<Client> findByNameContainingIgnoreCaseAndActiveTrue(String name);
 
     List<Client> findByPhoneContainingAndActiveTrue(String phone);
