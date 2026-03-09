@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  define: {
+    global: 'globalThis'
+  },
   plugins: [
     vue(),
     VitePWA({

@@ -75,4 +75,4 @@ CREATE INDEX idx_stock_movement_product  ON stock_movement(product_id);
 -- BCrypt hash generated for 'Admin1234!'
 INSERT INTO "user" (name, phone, role, password_hash)
 VALUES ('Manager', '+22600000000', 'MANAGER',
-        '$2a$12$xkpR0OkBmqMxEXlxMiBJRuNlNHM7.zMJgC3jJ3.9b6/5D8M.h6Fhq');
+        '$2b$12$FTbJf16S1Jsq3413sBXCaeC.7fVaUL8//vHhcLFLaoYjTzBh/y.ry');

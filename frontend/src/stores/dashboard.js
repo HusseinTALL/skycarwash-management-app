@@ -59,7 +59,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (stompClient?.active) return
 
     stompClient = new StompClient({
-      webSocketFactory: () => new SockJS('/ws'),
+      webSocketFactory: () => new SockJS((import.meta.env.VITE_API_BASE_URL || '') + '/ws'),
       reconnectDelay: 5000,
       onConnect: () => {
         wsConnected.value = true
