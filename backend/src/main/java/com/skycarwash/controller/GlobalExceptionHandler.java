@@ -1,5 +1,6 @@
 package com.skycarwash.controller;
 
+import com.skycarwash.exception.BusinessException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.*;
 import org.springframework.validation.FieldError;
@@ -27,5 +28,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArg(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, String>> handleBusiness(BusinessException e) {
+        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getMessage()));
     }
 }

@@ -15,7 +15,7 @@
     </div>
 
     <div class="card text-center py-8 text-slate-500 text-sm">
-      SkyCarWash v0.1.0 — S1–S2
+      SkyCarWash v0.2.0 — S3–S4
     </div>
   </div>
 </template>

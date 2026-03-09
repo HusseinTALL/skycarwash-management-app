@@ -49,6 +49,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/services/**").authenticated()
                         // Product CRUD – manager only
                         .requestMatchers("/api/products/**").hasRole("MANAGER")
+                        // Transactions – employee + manager can create/cancel; manager can read today
+                        .requestMatchers(HttpMethod.POST, "/api/transactions/**").hasAnyRole("EMPLOYEE", "MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/transactions/today").hasAnyRole("MANAGER", "PARTNER")
                         // Dashboard – manager + partner
                         .requestMatchers("/api/dashboard/**").hasAnyRole("MANAGER", "PARTNER")
                         // Everything else requires authentication
