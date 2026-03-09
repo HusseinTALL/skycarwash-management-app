@@ -81,6 +81,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/today").hasAnyRole("MANAGER", "PARTNER")
                         // Dashboard – manager + partner
                         .requestMatchers("/api/dashboard/**").hasAnyRole("MANAGER", "PARTNER")
+                        // User management – manager only
+                        .requestMatchers("/api/manager/**").hasRole("MANAGER")
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
@@ -92,7 +94,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
