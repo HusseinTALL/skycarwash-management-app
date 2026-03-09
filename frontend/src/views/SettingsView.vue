@@ -36,12 +36,112 @@
     </div>
 
     <!-- ── Utilisateurs ─────────────────────────────────────────────── -->
-    <div class="card space-y-3">
-      <h3 class="font-semibold text-slate-300">Utilisateurs</h3>
-      <p class="text-sm text-slate-400">
-        La gestion des comptes utilisateurs (ajout, désactivation, réinitialisation de mot de passe)
-        sera disponible dans la v2. Contactez votre administrateur pour toute modification.
-      </p>
+    <div class="card space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-slate-300">Utilisateurs</h3>
+        <button @click="toggleUserForm" class="btn-primary text-sm py-1.5 px-3">
+          {{ showUserForm ? 'Annuler' : '+ Nouvel utilisateur' }}
+        </button>
+      </div>
+
+      <!-- Formulaire inline de création -->
+      <div v-if="showUserForm" class="bg-slate-700/50 rounded-xl p-4 space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nom complet</label>
+          <input
+            v-model="userForm.name"
+            type="text"
+            class="input w-full"
+            placeholder="Ex : Amadou Diallo"
+          />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Téléphone</label>
+          <input
+            v-model="userForm.phone"
+            type="tel"
+            class="input w-full"
+            placeholder="Ex : +22612345678"
+          />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Rôle</label>
+          <select v-model="userForm.role" class="input w-full">
+            <option value="EMPLOYEE">Employé</option>
+            <option value="PARTNER">Partenaire</option>
+          </select>
+        </div>
+        <p v-if="userFormError" class="text-red-400 text-sm">{{ userFormError }}</p>
+        <button
+          @click="createUser"
+          :disabled="creatingUser"
+          class="btn-primary w-full disabled:opacity-50"
+        >
+          {{ creatingUser ? 'Création…' : 'Créer le compte' }}
+        </button>
+      </div>
+
+      <!-- Affichage du mot de passe temporaire (une seule fois) -->
+      <div
+        v-if="revealedPassword"
+        class="bg-emerald-900/40 border border-emerald-700 rounded-xl p-4 space-y-2"
+      >
+        <p class="text-emerald-400 text-sm font-semibold">{{ revealedPasswordLabel }}</p>
+        <p class="font-mono text-2xl text-white tracking-widest">{{ revealedPassword }}</p>
+        <p class="text-xs text-slate-400">
+          Communiquez ce mot de passe verbalement. Il ne sera plus affiché.
+        </p>
+        <button
+          @click="revealedPassword = null"
+          class="text-xs text-slate-400 hover:text-slate-300 underline"
+        >
+          Fermer
+        </button>
+      </div>
+
+      <!-- Liste des utilisateurs -->
+      <p v-if="loadingUsers" class="text-slate-500 text-sm">Chargement…</p>
+      <ul v-else class="divide-y divide-slate-700">
+        <li
+          v-for="u in users"
+          :key="u.id"
+          class="flex items-center justify-between py-3 gap-2"
+        >
+          <div class="min-w-0">
+            <p class="font-medium text-white truncate">{{ u.name }}</p>
+            <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+              <span class="text-xs text-slate-400">{{ u.phone }}</span>
+              <span class="text-xs text-slate-500">·</span>
+              <span class="text-xs text-slate-400">{{ roleLabel(u.role) }}</span>
+              <span
+                :class="u.active
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-red-500/20 text-red-400'"
+                class="text-xs px-1.5 py-0.5 rounded-full"
+              >
+                {{ u.active ? 'Actif' : 'Inactif' }}
+              </span>
+            </div>
+          </div>
+          <div v-if="u.role !== 'MANAGER'" class="flex gap-2 shrink-0">
+            <button
+              @click="toggleStatus(u)"
+              class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300"
+              :class="u.active
+                ? 'hover:bg-red-900/40 hover:text-red-400'
+                : 'hover:bg-emerald-900/40 hover:text-emerald-400'"
+            >
+              {{ u.active ? 'Désactiver' : 'Réactiver' }}
+            </button>
+            <button
+              @click="resetPassword(u)"
+              class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-sky-900/40 hover:text-sky-400"
+            >
+              Reset MDP
+            </button>
+          </div>
+        </li>
+      </ul>
     </div>
 
     <!-- ── À propos ──────────────────────────────────────────────────── -->
@@ -132,6 +232,18 @@ import api from '@/api/axios'
 const services        = ref([])
 const loadingServices = ref(false)
 
+// ── Users state ─────────────────────────────────────────────────────── //
+const users        = ref([])
+const loadingUsers = ref(false)
+
+const showUserForm  = ref(false)
+const creatingUser  = ref(false)
+const userFormError = ref('')
+const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
+
+const revealedPassword      = ref(null)
+const revealedPasswordLabel = ref('')
+
 const showServiceModal = ref(false)
 const editingService   = ref(null)
 const saving           = ref(false)
@@ -152,7 +264,20 @@ async function loadServices() {
   }
 }
 
-onMounted(loadServices)
+// ── Load users ──────────────────────────────────────────────────────── //
+async function loadUsers() {
+  loadingUsers.value = true
+  try {
+    const { data } = await api.get('/manager/users')
+    users.value = data
+  } catch {
+    // silently fail
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
+onMounted(() => { loadServices(); loadUsers() })
 
 // ── Modal helpers ────────────────────────────────────────────────────── //
 function openServiceForm(svc) {
@@ -168,6 +293,60 @@ function openServiceForm(svc) {
 
 function closeServiceModal() {
   showServiceModal.value = false
+}
+
+// ── User helpers ─────────────────────────────────────────────────────── //
+function roleLabel(role) {
+  return role === 'MANAGER' ? 'Manager' : role === 'PARTNER' ? 'Partenaire' : 'Employé'
+}
+
+function toggleUserForm() {
+  showUserForm.value = !showUserForm.value
+  userFormError.value = ''
+  userForm.value = { name: '', phone: '', role: 'EMPLOYEE' }
+}
+
+async function createUser() {
+  userFormError.value = ''
+  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.';       return }
+  if (!userForm.value.phone.trim()) { userFormError.value = 'Le téléphone est requis.'; return }
+
+  creatingUser.value = true
+  try {
+    const { data } = await api.post('/manager/users', {
+      name:  userForm.value.name.trim(),
+      phone: userForm.value.phone.trim(),
+      role:  userForm.value.role
+    })
+    revealedPassword.value      = data.temporaryPassword
+    revealedPasswordLabel.value = `Compte créé — Mot de passe temporaire de ${data.user.name} :`
+    showUserForm.value = false
+    await loadUsers()
+  } catch (err) {
+    userFormError.value = err.response?.data?.error || 'Une erreur est survenue.'
+  } finally {
+    creatingUser.value = false
+  }
+}
+
+async function toggleStatus(user) {
+  try {
+    const { data } = await api.patch(`/manager/users/${user.id}/status`, { active: !user.active })
+    const idx = users.value.findIndex(u => u.id === user.id)
+    if (idx !== -1) users.value[idx] = data
+  } catch (err) {
+    alert(err.response?.data?.error || 'Erreur lors de la mise à jour du statut.')
+  }
+}
+
+async function resetPassword(user) {
+  try {
+    const { data } = await api.post(`/manager/users/${user.id}/reset-password`)
+    revealedPassword.value      = data.temporaryPassword
+    revealedPasswordLabel.value = `Nouveau mot de passe temporaire de ${user.name} :`
+  } catch (err) {
+    alert(err.response?.data?.error || 'Erreur lors du reset.')
+  }
 }
 
 // ── Save (create or update) ──────────────────────────────────────────── //
