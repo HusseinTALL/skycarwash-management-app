@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
@@ -39,6 +41,19 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductDto> update(@PathVariable Long id, @Valid @RequestBody ProductDto dto) {
         return ResponseEntity.ok(productService.update(id, dto));
+    }
+
+    /**
+     * 2-click restock: POST /api/products/{id}/restock  { "quantity": 5.0 }
+     * Adds quantity to current stock and records a StockMovement(IN).
+     */
+    @PostMapping("/{id}/restock")
+    public ResponseEntity<ProductDto> restock(
+            @PathVariable Long id,
+            @RequestBody Map<String, BigDecimal> body) {
+
+        BigDecimal quantity = body.get("quantity");
+        return ResponseEntity.ok(productService.restock(id, quantity));
     }
 
     @DeleteMapping("/{id}")

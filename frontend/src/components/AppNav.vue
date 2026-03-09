@@ -1,5 +1,6 @@
 <template>
   <nav class="fixed bottom-0 inset-x-0 bg-slate-800 border-t border-slate-700 flex justify-around items-center h-16 z-10 safe-area-bottom">
+
     <!-- Caisse – employee + manager -->
     <RouterLink
       v-if="auth.isEmployee || auth.isManager"
@@ -42,17 +43,24 @@
       <span class="text-xs mt-0.5">Clients</span>
     </RouterLink>
 
-    <!-- Stock – manager -->
+    <!-- Stock – manager (with low-stock badge) -->
     <RouterLink
       v-if="auth.isManager"
       to="/stock"
-      class="nav-item"
+      class="nav-item relative"
       active-class="nav-item-active"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
-      </svg>
+      <div class="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+        </svg>
+        <!-- Low-stock alert badge -->
+        <span
+          v-if="stock.lowStockCount > 0"
+          class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5 leading-none"
+        >{{ stock.lowStockCount > 9 ? '9+' : stock.lowStockCount }}</span>
+      </div>
       <span class="text-xs mt-0.5">Stock</span>
     </RouterLink>
 
@@ -70,14 +78,22 @@
       </svg>
       <span class="text-xs mt-0.5">Réglages</span>
     </RouterLink>
+
   </nav>
 </template>
 
 <script setup>
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useStockStore } from '@/stores/stock'
 
-const auth = useAuthStore()
+const auth  = useAuthStore()
+const stock = useStockStore()
+
+// Load product list for badge count when manager is authenticated
+if (auth.isManager && stock.products.length === 0) {
+  stock.loadAll()
+}
 </script>
 
 <style scoped>
