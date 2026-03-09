@@ -146,15 +146,6 @@
       </button>
     </template>
 
-    <ConfirmModal
-      v-if="showDeactivateModal"
-      title="Désactiver ce client ?"
-      :message="`${store.current?.name} ne pourra plus être utilisé pour des transactions.`"
-      confirm-label="Désactiver"
-      @confirm="doDeactivate"
-      @cancel="showDeactivateModal = false"
-    />
-
     <!-- QR Card modal (feature 6) -->
     <Teleport to="body">
       <div
@@ -190,6 +181,15 @@
         </div>
       </div>
     </Teleport>
+
+    <ConfirmModal
+      v-if="showDeactivateModal"
+      title="Désactiver ce client ?"
+      :message="`${store.current?.name} ne pourra plus être utilisé pour des transactions.`"
+      confirm-label="Désactiver"
+      @confirm="doDeactivate"
+      @cancel="showDeactivateModal = false"
+    />
 
     <div v-else class="card text-center py-12 text-slate-400">
       Client introuvable
