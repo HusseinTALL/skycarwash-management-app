@@ -11,7 +11,15 @@
         </button>
       </div>
 
-      <p v-if="loadingServices" class="text-slate-500 text-sm">Chargement…</p>
+      <div v-if="loadingServices" class="space-y-3 animate-pulse">
+        <div v-for="n in 4" :key="n" class="flex justify-between items-center py-2">
+          <div class="space-y-1.5">
+            <div class="h-4 bg-slate-700 rounded w-28"></div>
+            <div class="h-3 bg-slate-700 rounded w-20"></div>
+          </div>
+          <div class="h-6 bg-slate-700 rounded w-16"></div>
+        </div>
+      </div>
       <p v-else-if="servicesError" class="text-red-400 text-sm">{{ servicesError }}</p>
 
       <ul v-else class="divide-y divide-slate-700">
@@ -100,12 +108,38 @@
         </button>
       </div>
 
+      <!-- Recherche utilisateurs -->
+      <input
+        v-if="!loadingUsers && !usersError && users.length > 0"
+        v-model="userSearch"
+        type="search"
+        placeholder="Rechercher un utilisateur..."
+        class="input w-full"
+      />
+
       <!-- Liste des utilisateurs -->
-      <p v-if="loadingUsers" class="text-slate-500 text-sm">Chargement…</p>
+      <div v-if="loadingUsers" class="space-y-3 animate-pulse">
+        <div v-for="n in 3" :key="n" class="flex justify-between items-center py-2">
+          <div class="space-y-1.5">
+            <div class="h-4 bg-slate-700 rounded w-32"></div>
+            <div class="h-3 bg-slate-700 rounded w-24"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+          </div>
+        </div>
+      </div>
       <p v-else-if="usersError" class="text-red-400 text-sm">{{ usersError }}</p>
+      <p
+        v-else-if="filteredUsers.length === 0 && userSearch"
+        class="text-slate-500 text-sm text-center py-4"
+      >
+        Aucun utilisateur trouvé
+      </p>
       <ul v-else class="divide-y divide-slate-700">
         <li
-          v-for="u in users"
+          v-for="u in filteredUsers"
           :key="u.id"
           class="flex items-center justify-between py-3 gap-2"
         >
@@ -227,7 +261,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 
 // ── State ──────────────────────────────────────────────────────────── //
@@ -242,6 +276,15 @@ const showUserForm  = ref(false)
 const creatingUser  = ref(false)
 const userFormError = ref('')
 const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
+const userSearch    = ref('')
+
+const filteredUsers = computed(() => {
+  const q = userSearch.value.trim().toLowerCase()
+  if (!q) return users.value
+  return users.value.filter(u =>
+    u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q)
+  )
+})
 
 const revealedPassword      = ref(null)
 const revealedPasswordLabel = ref('')

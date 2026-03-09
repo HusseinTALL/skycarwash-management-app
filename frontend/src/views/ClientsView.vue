@@ -16,9 +16,17 @@
       @input="onSearch"
     />
 
-    <!-- Loading -->
-    <div v-if="store.loading" class="text-center py-10 text-slate-400 text-sm">
-      Chargement...
+    <!-- Loading skeleton -->
+    <div v-if="store.loading" class="space-y-2">
+      <div v-for="n in 5" :key="n" class="card animate-pulse">
+        <div class="flex items-center justify-between">
+          <div class="space-y-2 flex-1 min-w-0">
+            <div class="h-4 bg-slate-700 rounded w-2/5"></div>
+            <div class="h-3 bg-slate-700 rounded w-1/3"></div>
+          </div>
+          <div class="h-4 bg-slate-700 rounded w-20 shrink-0 ml-3"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty -->

@@ -24,9 +24,19 @@
       </span>
     </div>
 
-    <!-- Loading -->
-    <div v-if="stock.loading" class="text-center py-10 text-slate-400 text-sm">
-      Chargement...
+    <!-- Loading skeleton -->
+    <div v-if="stock.loading" class="space-y-3">
+      <div v-for="n in 4" :key="n" class="card animate-pulse space-y-3">
+        <div class="flex justify-between items-center">
+          <div class="h-4 bg-slate-700 rounded w-1/3"></div>
+          <div class="flex gap-2">
+            <div class="h-7 bg-slate-700 rounded w-16"></div>
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+          </div>
+        </div>
+        <div class="h-2 bg-slate-700 rounded-full"></div>
+        <div class="h-3 bg-slate-700 rounded w-2/5"></div>
+      </div>
     </div>
 
     <!-- Empty -->
@@ -202,18 +212,28 @@
       <!-- Deactivate -->
       <button
         v-if="editingProduct"
-        @click="handleDeactivate"
+        @click="showDeleteConfirm = true"
         class="w-full py-3 rounded-xl border border-red-700 text-red-400 hover:bg-red-900/20 text-sm font-medium transition-colors"
       >
         Supprimer ce produit
       </button>
     </div>
   </div>
+
+  <ConfirmModal
+    v-if="showDeleteConfirm"
+    title="Supprimer ce produit ?"
+    :message="`« ${editingProduct?.name} » sera retiré du stock.`"
+    confirm-label="Supprimer"
+    @confirm="doDeactivate"
+    @cancel="showDeleteConfirm = false"
+  />
 </template>
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
 import { useStockStore } from '@/stores/stock'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const stock = useStockStore()
 
@@ -254,10 +274,11 @@ async function confirmRestock() {
 // ── Add / Edit product form ───────────────────────────────────────── //
 const UNITS = ['L', 'kg', 'g', 'unité']
 
-const showProductForm   = ref(false)
-const editingProduct    = ref(null)
-const productFormSaving = ref(false)
-const productFormError  = ref('')
+const showProductForm    = ref(false)
+const editingProduct     = ref(null)
+const productFormSaving  = ref(false)
+const productFormError   = ref('')
+const showDeleteConfirm  = ref(false)
 
 const productForm = ref({ name: '', stock: 0, alertThreshold: 0, unit: 'L', active: true })
 
@@ -305,8 +326,8 @@ async function submitProductForm() {
   }
 }
 
-async function handleDeactivate() {
-  if (!confirm(`Supprimer "${editingProduct.value.name}" du stock ?`)) return
+async function doDeactivate() {
+  showDeleteConfirm.value = false
   await stock.deactivate(editingProduct.value.id)
   closeProductForm()
 }

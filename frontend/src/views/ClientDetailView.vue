@@ -16,9 +16,26 @@
       </RouterLink>
     </div>
 
-    <!-- Loading -->
-    <div v-if="store.loading && !store.current" class="text-center py-10 text-slate-400 text-sm">
-      Chargement...
+    <!-- Loading skeleton -->
+    <div v-if="store.loading && !store.current" class="card animate-pulse space-y-4">
+      <div class="flex justify-between">
+        <div class="space-y-2">
+          <div class="h-5 bg-slate-700 rounded w-36"></div>
+          <div class="h-3 bg-slate-700 rounded w-24"></div>
+        </div>
+        <div class="h-6 bg-slate-700 rounded w-16"></div>
+      </div>
+      <hr class="border-slate-700" />
+      <div class="space-y-3">
+        <div class="flex justify-between">
+          <div class="h-3 bg-slate-700 rounded w-28"></div>
+          <div class="h-4 bg-slate-700 rounded w-8"></div>
+        </div>
+        <div class="flex justify-between">
+          <div class="h-3 bg-slate-700 rounded w-24"></div>
+          <div class="h-3 bg-slate-700 rounded w-20"></div>
+        </div>
+      </div>
     </div>
 
     <template v-else-if="store.current">
@@ -101,12 +118,21 @@
       <!-- Deactivate -->
       <button
         v-if="store.current.active"
-        @click="confirmDeactivate"
+        @click="showDeactivateModal = true"
         class="w-full py-3 rounded-xl border border-red-700 text-red-400 hover:bg-red-900/20 text-sm font-medium transition-colors"
       >
         Désactiver ce client
       </button>
     </template>
+
+    <ConfirmModal
+      v-if="showDeactivateModal"
+      title="Désactiver ce client ?"
+      :message="`${store.current?.name} ne pourra plus être utilisé pour des transactions.`"
+      confirm-label="Désactiver"
+      @confirm="doDeactivate"
+      @cancel="showDeactivateModal = false"
+    />
 
     <div v-else class="card text-center py-12 text-slate-400">
       Client introuvable
@@ -118,15 +144,17 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const route  = useRoute()
 const router = useRouter()
 const store  = useClientsStore()
 
-const passagesToAdd  = ref(null)
-const recharging     = ref(false)
-const rechargeError  = ref('')
-const rechargeSuccess = ref('')
+const passagesToAdd      = ref(null)
+const recharging         = ref(false)
+const rechargeError      = ref('')
+const rechargeSuccess    = ref('')
+const showDeactivateModal = ref(false)
 
 onMounted(() => store.loadById(route.params.id))
 
@@ -145,8 +173,8 @@ async function recharge() {
   }
 }
 
-async function confirmDeactivate() {
-  if (!confirm(`Désactiver ${store.current.name} ?`)) return
+async function doDeactivate() {
+  showDeactivateModal.value = false
   await store.deactivate(route.params.id)
   router.push('/clients')
 }
