@@ -58,6 +58,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { PHONE_REGEX } from '@/constants'
 
 const auth    = useAuthStore()
 const router  = useRouter()
@@ -69,7 +70,12 @@ const loading  = ref(false)
 const errorMsg = ref('')
 
 async function handleLogin() {
+  if (loading.value) return
   errorMsg.value = ''
+  if (!PHONE_REGEX.test(phone.value.trim())) {
+    errorMsg.value = 'Numéro de téléphone invalide (ex : +22612345678)'
+    return
+  }
   loading.value  = true
   try {
     await auth.login(phone.value.trim(), password.value)

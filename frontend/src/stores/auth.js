@@ -3,16 +3,38 @@ import { ref, computed } from 'vue'
 import api from '@/api/axios'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('scw_token') || null)
-  const user  = ref(JSON.parse(localStorage.getItem('scw_user') || 'null'))
+  // ── P5.2: validated reads from localStorage ──────────────────────── //
+  const token = ref(null)
+  const user  = ref(null)
 
+  try {
+    const stored = localStorage.getItem('scw_token')
+    if (stored) token.value = stored
+  } catch { /* corrupted — ignore */ }
+
+  try {
+    const stored = localStorage.getItem('scw_user')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      if (parsed && typeof parsed === 'object') user.value = parsed
+    }
+  } catch {
+    localStorage.removeItem('scw_user')
+  }
+
+  // ── Computed roles ────────────────────────────────────────────────── //
   const isAuthenticated = computed(() => !!token.value)
-  const role = computed(() => user.value?.role || null)
+  const role       = computed(() => user.value?.role || null)
   const isManager  = computed(() => role.value === 'MANAGER')
   const isEmployee = computed(() => role.value === 'EMPLOYEE')
   const isPartner  = computed(() => role.value === 'PARTNER')
 
+  /** P5.1: set to true by the 401 interceptor; cleared on login */
+  const sessionExpired = ref(false)
+
+  // ── Actions ───────────────────────────────────────────────────────── //
   async function login(phone, password) {
+    sessionExpired.value = false
     const { data } = await api.post('/auth/login', { phone, password })
     token.value = data.token
     user.value  = { userId: data.userId, name: data.name, role: data.role }
@@ -21,11 +43,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    token.value = null
-    user.value  = null
+    token.value  = null
+    user.value   = null
     localStorage.removeItem('scw_token')
     localStorage.removeItem('scw_user')
   }
 
-  return { token, user, isAuthenticated, role, isManager, isEmployee, isPartner, login, logout }
+  return { token, user, isAuthenticated, role, isManager, isEmployee, isPartner, sessionExpired, login, logout }
 })

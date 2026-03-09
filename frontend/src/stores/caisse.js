@@ -69,7 +69,8 @@ export const useCaisseStore = defineStore('caisse', () => {
         amount:        selectedService.value.price,
         paymentMethod: selectedPayment.value,
         clientName:    selectedClient.value?.name ?? null,
-        clientBalanceAfter: selectedClient.value ? selectedClient.value.balance - 1 : null,
+        // Estimated locally; server will confirm the real value on sync
+        clientBalanceAfter: selectedClient.value ? Math.max(0, selectedClient.value.balance - 1) : null,
         createdAt:     new Date().toISOString(),
         pending:       true
       }

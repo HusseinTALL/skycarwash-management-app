@@ -1,8 +1,10 @@
 <template>
-  <div class="fixed inset-0 z-50 flex flex-col bg-slate-900">
+  <div ref="trapRef" role="dialog" aria-modal="true" aria-label="Recherche client"
+       class="fixed inset-0 z-50 flex flex-col bg-slate-900">
     <!-- Header -->
     <div class="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
-      <button @click="emit('close')" class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
+      <button @click="emit('close')" aria-label="Fermer la recherche"
+              class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
@@ -25,6 +27,8 @@
     <!-- Results -->
     <div class="flex-1 overflow-y-auto px-4 py-2 space-y-2">
       <p v-if="loading" class="text-center text-slate-400 py-8 text-sm">Recherche...</p>
+
+      <p v-else-if="searchError" class="text-center text-red-400 py-8 text-sm">{{ searchError }}</p>
 
       <p v-else-if="query.length >= 2 && results.length === 0"
          class="text-center text-slate-400 py-8 text-sm">
@@ -68,30 +72,39 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const emit = defineEmits(['select', 'close'])
 
 const query       = ref('')
 const results     = ref([])
 const loading     = ref(false)
+const searchError = ref('')
 const searchInput = ref(null)
+const trapRef     = ref(null)
 let debounce
 
+useFocusTrap(trapRef)
+
+// searchInput already focused by useFocusTrap (it's the first focusable element)
 onMounted(() => searchInput.value?.focus())
 
 function onInput() {
   clearTimeout(debounce)
+  searchError.value = ''
   if (query.value.length < 2) { results.value = []; return }
   debounce = setTimeout(doSearch, 300)
 }
 
 async function doSearch() {
   loading.value = true
+  searchError.value = ''
   try {
     const { data } = await api.get('/clients/search', { params: { q: query.value } })
     results.value = data
   } catch {
     results.value = []
+    searchError.value = 'Erreur lors de la recherche. Veuillez réessayer.'
   } finally {
     loading.value = false
   }

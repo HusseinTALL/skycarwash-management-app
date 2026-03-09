@@ -1,7 +1,8 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-end bg-black/60" @click.self="caisse.closeCancelModal()">
-    <div class="w-full bg-slate-800 rounded-t-3xl p-6 space-y-4">
-      <h3 class="text-lg font-bold text-center">Annuler la transaction</h3>
+    <div ref="trapRef" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title"
+         class="w-full bg-slate-800 rounded-t-3xl p-6 space-y-4">
+      <h3 id="cancel-modal-title" class="text-lg font-bold text-center">Annuler la transaction</h3>
 
       <p class="text-slate-400 text-sm text-center">
         La transaction #{{ caisse.lastTransaction?.id }} sera annulée.
@@ -42,11 +43,15 @@
 <script setup>
 import { ref } from 'vue'
 import { useCaisseStore } from '@/stores/caisse'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
-const caisse  = useCaisseStore()
-const reason  = ref('')
-const loading = ref(false)
-const error   = ref('')
+const caisse   = useCaisseStore()
+const reason   = ref('')
+const loading  = ref(false)
+const error    = ref('')
+const trapRef  = ref(null)
+
+useFocusTrap(trapRef)
 
 async function doCancel() {
   if (!reason.value.trim()) return

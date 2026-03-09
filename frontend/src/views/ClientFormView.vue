@@ -2,7 +2,8 @@
   <div class="p-4 space-y-4">
     <!-- Header -->
     <div class="flex items-center gap-3">
-      <RouterLink to="/clients" class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
+      <RouterLink to="/clients" aria-label="Retour à la liste des clients"
+                  class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
@@ -85,6 +86,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
+import { CLIENT_TYPE_HINTS, PHONE_REGEX } from '@/constants'
 
 const route    = useRoute()
 const router   = useRouter()
@@ -100,11 +102,6 @@ const TYPES = [
   { value: 'VIP',      label: 'VIP'            }
 ]
 
-const TYPE_HINTS = {
-  CARTE:    'Prépayé — décrémenté à chaque lavage',
-  BOUCLIER: 'Mensuel — 2 lavages + protections inclus',
-  VIP:      'Tarif négocié — flotte ou entreprise'
-}
 
 const form = ref({
   name:      '',
@@ -115,7 +112,7 @@ const form = ref({
   active:    true
 })
 
-const typeHint = computed(() => TYPE_HINTS[form.value.type] ?? '')
+const typeHint = computed(() => CLIENT_TYPE_HINTS[form.value.type] ?? '')
 
 onMounted(async () => {
   if (isEdit.value) {
@@ -135,12 +132,18 @@ onMounted(async () => {
 })
 
 async function submit() {
+  if (submitting.value) return
   error.value    = ''
+  const trimmedPhone = form.value.phone.trim()
+  if (!PHONE_REGEX.test(trimmedPhone)) {
+    error.value = 'Numéro de téléphone invalide (ex : +22612345678)'
+    return
+  }
   submitting.value = true
 
   const payload = {
     name:      form.value.name.trim(),
-    phone:     form.value.phone.trim(),
+    phone:     trimmedPhone,
     type:      form.value.type,
     balance:   form.value.type === 'BOUCLIER' ? 0 : form.value.balance,
     expiresAt: form.value.expiresAt || null,

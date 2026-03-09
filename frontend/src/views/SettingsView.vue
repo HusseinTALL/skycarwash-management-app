@@ -11,7 +11,16 @@
         </button>
       </div>
 
-      <p v-if="loadingServices" class="text-slate-500 text-sm">Chargement…</p>
+      <div v-if="loadingServices" class="space-y-3 animate-pulse">
+        <div v-for="n in 4" :key="n" class="flex justify-between items-center py-2">
+          <div class="space-y-1.5">
+            <div class="h-4 bg-slate-700 rounded w-28"></div>
+            <div class="h-3 bg-slate-700 rounded w-20"></div>
+          </div>
+          <div class="h-6 bg-slate-700 rounded w-16"></div>
+        </div>
+      </div>
+      <p v-else-if="servicesError" class="text-red-400 text-sm">{{ servicesError }}</p>
 
       <ul v-else class="divide-y divide-slate-700">
         <li
@@ -99,11 +108,39 @@
         </button>
       </div>
 
+      <!-- Recherche utilisateurs -->
+      <input
+        v-if="!loadingUsers && !usersError && users.length > 0"
+        v-model="userSearch"
+        type="search"
+        placeholder="Rechercher un utilisateur..."
+        class="input w-full"
+      />
+
       <!-- Liste des utilisateurs -->
-      <p v-if="loadingUsers" class="text-slate-500 text-sm">Chargement…</p>
-      <ul v-else class="divide-y divide-slate-700">
+      <div v-if="loadingUsers" class="space-y-3 animate-pulse">
+        <div v-for="n in 3" :key="n" class="flex justify-between items-center py-2">
+          <div class="space-y-1.5">
+            <div class="h-4 bg-slate-700 rounded w-32"></div>
+            <div class="h-3 bg-slate-700 rounded w-24"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+          </div>
+        </div>
+      </div>
+      <p v-else-if="usersError" class="text-red-400 text-sm">{{ usersError }}</p>
+      <p
+        v-else-if="filteredUsers.length === 0 && userSearch"
+        class="text-slate-500 text-sm text-center py-4"
+      >
+        Aucun utilisateur trouvé
+      </p>
+      <template v-else>
+      <ul class="divide-y divide-slate-700">
         <li
-          v-for="u in users"
+          v-for="u in paginatedUsers"
           :key="u.id"
           class="flex items-center justify-between py-3 gap-2"
         >
@@ -126,6 +163,7 @@
           <div v-if="u.role !== 'MANAGER'" class="flex gap-2 shrink-0">
             <button
               @click="toggleStatus(u)"
+              :aria-label="u.active ? `Désactiver le compte de ${u.name}` : `Réactiver le compte de ${u.name}`"
               class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300"
               :class="u.active
                 ? 'hover:bg-red-900/40 hover:text-red-400'
@@ -135,6 +173,7 @@
             </button>
             <button
               @click="resetPassword(u)"
+              :aria-label="`Réinitialiser le mot de passe de ${u.name}`"
               class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-sky-900/40 hover:text-sky-400"
             >
               Reset MDP
@@ -142,6 +181,26 @@
           </div>
         </li>
       </ul>
+
+      <!-- Users pagination -->
+      <div v-if="userTotalPages > 1" class="flex items-center justify-between text-sm pt-1">
+        <button
+          @click="userPage--"
+          :disabled="userPage === 1"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          ← Préc.
+        </button>
+        <span class="text-slate-400 text-xs">{{ userPage }} / {{ userTotalPages }}</span>
+        <button
+          @click="userPage++"
+          :disabled="userPage === userTotalPages"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          Suiv. →
+        </button>
+      </div>
+      </template>
     </div>
 
     <!-- ── À propos ──────────────────────────────────────────────────── -->
@@ -225,8 +284,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
+import { PHONE_REGEX } from '@/constants'
 
 // ── State ──────────────────────────────────────────────────────────── //
 const services        = ref([])
@@ -240,9 +300,29 @@ const showUserForm  = ref(false)
 const creatingUser  = ref(false)
 const userFormError = ref('')
 const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
+const userSearch    = ref('')
+
+const USER_PAGE_SIZE = 10
+const userPage      = ref(1)
+
+const filteredUsers = computed(() => {
+  const q = userSearch.value.trim().toLowerCase()
+  return q
+    ? users.value.filter(u => u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q))
+    : users.value
+})
+
+const userTotalPages  = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / USER_PAGE_SIZE)))
+const paginatedUsers  = computed(() => {
+  const start = (userPage.value - 1) * USER_PAGE_SIZE
+  return filteredUsers.value.slice(start, start + USER_PAGE_SIZE)
+})
 
 const revealedPassword      = ref(null)
 const revealedPasswordLabel = ref('')
+
+const servicesError = ref('')
+const usersError    = ref('')
 
 const showServiceModal = ref(false)
 const editingService   = ref(null)
@@ -254,11 +334,12 @@ const form = ref({ name: '', price: 0, category: '', active: true })
 // ── Load services ───────────────────────────────────────────────────── //
 async function loadServices() {
   loadingServices.value = true
+  servicesError.value = ''
   try {
     const { data } = await api.get('/services')
     services.value = data
-  } catch {
-    // silently fail — user sees empty list
+  } catch (err) {
+    servicesError.value = err.response?.data?.error || 'Impossible de charger les services.'
   } finally {
     loadingServices.value = false
   }
@@ -267,15 +348,18 @@ async function loadServices() {
 // ── Load users ──────────────────────────────────────────────────────── //
 async function loadUsers() {
   loadingUsers.value = true
+  usersError.value = ''
   try {
     const { data } = await api.get('/manager/users')
     users.value = data
-  } catch {
-    // silently fail
+  } catch (err) {
+    usersError.value = err.response?.data?.error || 'Impossible de charger les utilisateurs.'
   } finally {
     loadingUsers.value = false
   }
 }
+
+watch(userSearch, () => { userPage.value = 1 })
 
 onMounted(() => { loadServices(); loadUsers() })
 
@@ -307,9 +391,13 @@ function toggleUserForm() {
 }
 
 async function createUser() {
+  if (creatingUser.value) return
   userFormError.value = ''
-  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.';       return }
-  if (!userForm.value.phone.trim()) { userFormError.value = 'Le téléphone est requis.'; return }
+  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.'; return }
+  if (!PHONE_REGEX.test(userForm.value.phone.trim())) {
+    userFormError.value = 'Numéro invalide (ex : +22612345678)'
+    return
+  }
 
   creatingUser.value = true
   try {
@@ -351,6 +439,7 @@ async function resetPassword(user) {
 
 // ── Save (create or update) ──────────────────────────────────────────── //
 async function saveService() {
+  if (saving.value) return
   formError.value = ''
   if (!form.value.name.trim()) { formError.value = 'Le nom est requis.'; return }
   if (!form.value.price || form.value.price <= 0) { formError.value = 'Le prix doit être > 0.'; return }

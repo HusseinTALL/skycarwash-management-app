@@ -1,6 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-end bg-black/60" @click.self="caisse.closeReceipt()">
-    <div class="w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 animate-slide-up">
+    <div ref="trapRef" role="dialog" aria-modal="true" aria-label="Reçu de transaction"
+         class="receipt-print-area w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 animate-slide-up">
 
       <!-- Status badge -->
       <div class="flex justify-center">
@@ -62,26 +63,33 @@
         Annuler cette transaction
       </button>
 
-      <!-- Close -->
-      <button @click="caisse.closeReceipt()" class="btn-primary w-full">
-        Fermer
-      </button>
+      <!-- Action buttons -->
+      <div class="flex gap-3 no-print">
+        <button
+          @click="print()"
+          class="flex-1 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
+        >
+          Imprimer
+        </button>
+        <button @click="caisse.closeReceipt()" class="btn-primary flex-1">
+          Fermer
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { useCaisseStore } from '@/stores/caisse'
+import { PAYMENT_LABELS } from '@/constants'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
-const caisse = useCaisseStore()
-const tx     = caisse.lastTransaction
+const caisse  = useCaisseStore()
+const tx      = computed(() => caisse.lastTransaction)
+const trapRef = ref(null)
 
-const PAYMENT_LABELS = {
-  CASH:        'Espèces',
-  ORANGE:      'Orange Money',
-  MOOV:        'Moov Money',
-  ABONNEMENT:  'Abonnement'
-}
+useFocusTrap(trapRef)
 
 function formatPrice(fcfa) {
   return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA'
@@ -95,6 +103,10 @@ function formatTime(iso) {
   if (!iso) return '--'
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
+
+function print() {
+  window.print()
+}
 </script>
 
 <style>
@@ -104,5 +116,21 @@ function formatTime(iso) {
 }
 .animate-slide-up {
   animation: slide-up 0.25s ease-out;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  .receipt-print-area,
+  .receipt-print-area * { visibility: visible; }
+  .receipt-print-area {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: black;
+  }
+  .no-print { display: none !important; }
 }
 </style>

@@ -24,9 +24,19 @@
       </span>
     </div>
 
-    <!-- Loading -->
-    <div v-if="stock.loading" class="text-center py-10 text-slate-400 text-sm">
-      Chargement...
+    <!-- Loading skeleton -->
+    <div v-if="stock.loading" class="space-y-3">
+      <div v-for="n in 4" :key="n" class="card animate-pulse space-y-3">
+        <div class="flex justify-between items-center">
+          <div class="h-4 bg-slate-700 rounded w-1/3"></div>
+          <div class="flex gap-2">
+            <div class="h-7 bg-slate-700 rounded w-16"></div>
+            <div class="h-7 bg-slate-700 rounded w-20"></div>
+          </div>
+        </div>
+        <div class="h-2 bg-slate-700 rounded-full"></div>
+        <div class="h-3 bg-slate-700 rounded w-2/5"></div>
+      </div>
     </div>
 
     <!-- Empty -->
@@ -39,10 +49,26 @@
       <p class="text-sm mt-1">Ajoutez vos produits et définissez les seuils d'alerte</p>
     </div>
 
-    <!-- Product list -->
+    <!-- Product list + sort + pagination -->
     <div v-else class="space-y-3">
+
+      <!-- Sort controls -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-slate-500">Trier :</span>
+        <button
+          v-for="col in STOCK_SORT_COLS"
+          :key="col.key"
+          @click="toggleStockSort(col.key)"
+          class="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
+          :class="stockSortKey === col.key ? 'bg-brand-500/20 text-brand-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'"
+        >
+          {{ col.label }}
+          <span v-if="stockSortKey === col.key">{{ stockSortDir === 'asc' ? '↑' : '↓' }}</span>
+        </button>
+      </div>
+
       <div
-        v-for="product in stock.products"
+        v-for="product in paginatedProducts"
         :key="product.id"
         class="card space-y-2"
         :class="stock.isLow(product) ? 'ring-1 ring-red-700' : ''"
@@ -52,6 +78,7 @@
           <div class="flex items-center gap-2 min-w-0">
             <span
               v-if="stock.isLow(product)"
+              aria-hidden="true"
               class="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse"
             />
             <p class="font-semibold truncate">{{ product.name }}</p>
@@ -83,18 +110,46 @@
               {{ formatQty(product.stock) }} {{ product.unit }}
             </span>
           </div>
-          <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-2 bg-slate-700 rounded-full overflow-hidden"
+               :aria-label="`Niveau de stock : ${stockLevelLabel(product)}`" role="img">
             <div
               class="h-full rounded-full transition-all duration-500"
               :class="stock.stockColor(product)"
               :style="{ width: (stock.stockRatio(product) * 100).toFixed(0) + '%' }"
+              aria-hidden="true"
             />
           </div>
           <div class="flex justify-between text-xs text-slate-500">
             <span>Seuil alerte : {{ formatQty(product.alertThreshold) }} {{ product.unit }}</span>
-            <span v-if="stock.isLow(product)" class="text-red-400 font-medium">Stock bas !</span>
+            <span
+              class="font-medium"
+              :class="{
+                'text-red-400':   stock.isLow(product),
+                'text-amber-400': !stock.isLow(product) && Number(product.stock) <= Number(product.alertThreshold) * 2,
+                'text-green-400': Number(product.stock) > Number(product.alertThreshold) * 2
+              }"
+            >{{ stockLevelLabel(product) }}</span>
           </div>
         </div>
+      </div>
+
+      <!-- Stock pagination -->
+      <div v-if="stockTotalPages > 1" class="flex items-center justify-between text-sm">
+        <button
+          @click="stockPage--"
+          :disabled="stockPage === 1"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          ← Préc.
+        </button>
+        <span class="text-slate-400 text-xs">{{ stockPage }} / {{ stockTotalPages }}</span>
+        <button
+          @click="stockPage++"
+          :disabled="stockPage === stockTotalPages"
+          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
+        >
+          Suiv. →
+        </button>
       </div>
     </div>
 
@@ -202,20 +257,70 @@
       <!-- Deactivate -->
       <button
         v-if="editingProduct"
-        @click="handleDeactivate"
+        @click="showDeleteConfirm = true"
         class="w-full py-3 rounded-xl border border-red-700 text-red-400 hover:bg-red-900/20 text-sm font-medium transition-colors"
       >
         Supprimer ce produit
       </button>
     </div>
   </div>
+
+  <ConfirmModal
+    v-if="showDeleteConfirm"
+    title="Supprimer ce produit ?"
+    :message="`« ${editingProduct?.name} » sera retiré du stock.`"
+    confirm-label="Supprimer"
+    @confirm="doDeactivate"
+    @cancel="showDeleteConfirm = false"
+  />
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useStockStore } from '@/stores/stock'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+import { STOCK_UNITS } from '@/constants'
 
 const stock = useStockStore()
+
+// ── Sorting ──────────────────────────────────────────────────────── //
+const STOCK_SORT_COLS = [
+  { key: 'name',  label: 'Nom' },
+  { key: 'stock', label: 'Stock' }
+]
+const stockSortKey = ref('name')
+const stockSortDir = ref('asc')
+
+function toggleStockSort(key) {
+  if (stockSortKey.value === key) {
+    stockSortDir.value = stockSortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    stockSortKey.value = key
+    stockSortDir.value = 'asc'
+  }
+  stockPage.value = 1
+}
+
+// ── Pagination ───────────────────────────────────────────────────── //
+const STOCK_PAGE_SIZE = 10
+const stockPage       = ref(1)
+
+const sortedProducts = computed(() => {
+  const list = [...stock.products]
+  list.sort((a, b) => {
+    let cmp = 0
+    if (stockSortKey.value === 'name')  cmp = a.name.localeCompare(b.name, 'fr')
+    if (stockSortKey.value === 'stock') cmp = Number(a.stock) - Number(b.stock)
+    return stockSortDir.value === 'asc' ? cmp : -cmp
+  })
+  return list
+})
+
+const stockTotalPages  = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / STOCK_PAGE_SIZE)))
+const paginatedProducts = computed(() => {
+  const start = (stockPage.value - 1) * STOCK_PAGE_SIZE
+  return sortedProducts.value.slice(start, start + STOCK_PAGE_SIZE)
+})
 
 onMounted(() => stock.loadAll())
 
@@ -238,6 +343,7 @@ function closeRestockModal() {
 }
 
 async function confirmRestock() {
+  if (restocking.value) return
   if (!restockQty.value || restockQty.value <= 0) return
   restockError.value = ''
   restocking.value   = true
@@ -252,12 +358,13 @@ async function confirmRestock() {
 }
 
 // ── Add / Edit product form ───────────────────────────────────────── //
-const UNITS = ['L', 'kg', 'g', 'unité']
+const UNITS = STOCK_UNITS
 
-const showProductForm   = ref(false)
-const editingProduct    = ref(null)
-const productFormSaving = ref(false)
-const productFormError  = ref('')
+const showProductForm    = ref(false)
+const editingProduct     = ref(null)
+const productFormSaving  = ref(false)
+const productFormError   = ref('')
+const showDeleteConfirm  = ref(false)
 
 const productForm = ref({ name: '', stock: 0, alertThreshold: 0, unit: 'L', active: true })
 
@@ -284,6 +391,7 @@ function closeProductForm() {
 }
 
 async function submitProductForm() {
+  if (productFormSaving.value) return
   if (!productForm.value.name.trim()) return
   productFormError.value = ''
   productFormSaving.value = true
@@ -305,8 +413,8 @@ async function submitProductForm() {
   }
 }
 
-async function handleDeactivate() {
-  if (!confirm(`Supprimer "${editingProduct.value.name}" du stock ?`)) return
+async function doDeactivate() {
+  showDeleteConfirm.value = false
   await stock.deactivate(editingProduct.value.id)
   closeProductForm()
 }
@@ -315,5 +423,13 @@ async function handleDeactivate() {
 function formatQty(val) {
   const n = Number(val)
   return Number.isInteger(n) ? n : n.toFixed(3).replace(/\.?0+$/, '')
+}
+
+function stockLevelLabel(product) {
+  const s = Number(product.stock)
+  const t = Number(product.alertThreshold)
+  if (s <= t)     return 'Critique'
+  if (s <= t * 2) return 'Modéré'
+  return 'Élevé'
 }
 </script>

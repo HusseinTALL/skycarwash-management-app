@@ -4,7 +4,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <RouterLink to="/clients" class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
+        <RouterLink to="/clients" aria-label="Retour à la liste des clients"
+                    class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
@@ -16,9 +17,26 @@
       </RouterLink>
     </div>
 
-    <!-- Loading -->
-    <div v-if="store.loading && !store.current" class="text-center py-10 text-slate-400 text-sm">
-      Chargement...
+    <!-- Loading skeleton -->
+    <div v-if="store.loading && !store.current" class="card animate-pulse space-y-4">
+      <div class="flex justify-between">
+        <div class="space-y-2">
+          <div class="h-5 bg-slate-700 rounded w-36"></div>
+          <div class="h-3 bg-slate-700 rounded w-24"></div>
+        </div>
+        <div class="h-6 bg-slate-700 rounded w-16"></div>
+      </div>
+      <hr class="border-slate-700" />
+      <div class="space-y-3">
+        <div class="flex justify-between">
+          <div class="h-3 bg-slate-700 rounded w-28"></div>
+          <div class="h-4 bg-slate-700 rounded w-8"></div>
+        </div>
+        <div class="flex justify-between">
+          <div class="h-3 bg-slate-700 rounded w-24"></div>
+          <div class="h-3 bg-slate-700 rounded w-20"></div>
+        </div>
+      </div>
     </div>
 
     <template v-else-if="store.current">
@@ -53,8 +71,16 @@
           </div>
           <div v-if="store.current.expiresAt" class="flex justify-between">
             <dt class="text-slate-400">Expiration</dt>
-            <dd :class="expiryClass(store.current.expiresAt)">
+            <dd :class="expiryClass(store.current.expiresAt)" class="flex items-center gap-1.5">
               {{ formatDate(store.current.expiresAt) }}
+              <span v-if="expiryStatus(store.current.expiresAt)"
+                    class="text-xs px-1.5 py-0.5 rounded font-semibold"
+                    :class="{
+                      'bg-red-900/50 text-red-300':   expiryClass(store.current.expiresAt) === 'text-red-400 font-semibold',
+                      'bg-amber-900/50 text-amber-300': expiryClass(store.current.expiresAt) === 'text-amber-400 font-semibold'
+                    }">
+                {{ expiryStatus(store.current.expiresAt) }}
+              </span>
             </dd>
           </div>
           <div class="flex justify-between">
@@ -101,12 +127,21 @@
       <!-- Deactivate -->
       <button
         v-if="store.current.active"
-        @click="confirmDeactivate"
+        @click="showDeactivateModal = true"
         class="w-full py-3 rounded-xl border border-red-700 text-red-400 hover:bg-red-900/20 text-sm font-medium transition-colors"
       >
         Désactiver ce client
       </button>
     </template>
+
+    <ConfirmModal
+      v-if="showDeactivateModal"
+      title="Désactiver ce client ?"
+      :message="`${store.current?.name} ne pourra plus être utilisé pour des transactions.`"
+      confirm-label="Désactiver"
+      @confirm="doDeactivate"
+      @cancel="showDeactivateModal = false"
+    />
 
     <div v-else class="card text-center py-12 text-slate-400">
       Client introuvable
@@ -118,19 +153,22 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const route  = useRoute()
 const router = useRouter()
 const store  = useClientsStore()
 
-const passagesToAdd  = ref(null)
-const recharging     = ref(false)
-const rechargeError  = ref('')
-const rechargeSuccess = ref('')
+const passagesToAdd      = ref(null)
+const recharging         = ref(false)
+const rechargeError      = ref('')
+const rechargeSuccess    = ref('')
+const showDeactivateModal = ref(false)
 
 onMounted(() => store.loadById(route.params.id))
 
 async function recharge() {
+  if (recharging.value) return
   rechargeError.value   = ''
   rechargeSuccess.value = ''
   recharging.value      = true
@@ -145,8 +183,8 @@ async function recharge() {
   }
 }
 
-async function confirmDeactivate() {
-  if (!confirm(`Désactiver ${store.current.name} ?`)) return
+async function doDeactivate() {
+  showDeactivateModal.value = false
   await store.deactivate(route.params.id)
   router.push('/clients')
 }
@@ -161,6 +199,13 @@ function expiryClass(iso) {
   if (days <= 0) return 'text-red-400 font-semibold'
   if (days <= 5) return 'text-amber-400 font-semibold'
   return 'text-slate-200'
+}
+
+function expiryStatus(iso) {
+  const days = Math.ceil((new Date(iso) - Date.now()) / 86_400_000)
+  if (days <= 0) return 'Expiré'
+  if (days <= 5) return 'Bientôt'
+  return null
 }
 
 function needsAlert(client) {
