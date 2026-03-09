@@ -48,6 +48,13 @@ public class AppStartupValidator {
         // ── Database URL ──────────────────────────────────────────────────────
         if (datasourceUrl == null || datasourceUrl.isBlank()) {
             errors.add("DATABASE_URL must be set.");
+        } else if (!datasourceUrl.startsWith("jdbc:")) {
+            // Railway/Render often provide DATABASE_URL in postgresql:// format.
+            // Spring Boot requires the jdbc: prefix; without it Hibernate will fail
+            // silently at connection time rather than at startup.
+            errors.add("DATABASE_URL must use the JDBC format: jdbc:postgresql://... "
+                    + "(current value starts with '" + datasourceUrl.split("://")[0] + "://'). "
+                    + "Prepend 'jdbc:' to the URL provided by your hosting platform.");
         }
 
         // ── CORS origins ──────────────────────────────────────────────────────

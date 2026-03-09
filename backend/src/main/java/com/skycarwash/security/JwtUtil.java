@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -25,8 +26,8 @@ public class JwtUtil {
     private long partnerExpirationSec;
 
     public JwtUtil(@Value("${jwt.secret}") String secret) {
-        // Ensure key is long enough; pad with repeated content if not (dev only)
-        byte[] keyBytes = secret.getBytes();
+        // Always use UTF-8 so key bytes are identical on every platform/container
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
             byte[] padded = new byte[32];
             System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
