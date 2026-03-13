@@ -455,30 +455,3 @@ function doPrint() {
 }
 </script>
 
-<style>
-@media print {
-  body > * { display: none !important; }
-  #closing-report-content {
-    display: block !important;
-    position: fixed;
-    inset: 0;
-    background: white;
-    color: black;
-    padding: 2rem;
-    font-size: 14px;
-  }
-  #closing-report-content .text-slate-400,
-  #closing-report-content .text-slate-300,
-  #closing-report-content .text-slate-500 {
-    color: #555 !important;
-  }
-  #closing-report-content .text-brand-400,
-  #closing-report-content .text-green-400 {
-    color: #000 !important;
-    font-weight: bold;
-  }
-  #closing-report-content hr {
-    border-color: #ccc;
-  }
-}
-</style>

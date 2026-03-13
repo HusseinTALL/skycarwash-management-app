@@ -54,7 +54,7 @@
               'bg-purple-900 text-purple-300': store.current.type === 'BOUCLIER',
               'bg-amber-900 text-amber-300':   store.current.type === 'VIP'
             }"
-          >{{ store.current.type }}</span>
+          >{{ CLIENT_TYPE_LABELS[store.current.type] ?? store.current.type }}</span>
         </div>
 
         <hr class="border-slate-700" />
@@ -76,8 +76,8 @@
               <span v-if="expiryStatus(store.current.expiresAt)"
                     class="text-xs px-1.5 py-0.5 rounded font-semibold"
                     :class="{
-                      'bg-red-900/50 text-red-300':   expiryClass(store.current.expiresAt) === 'text-red-400 font-semibold',
-                      'bg-amber-900/50 text-amber-300': expiryClass(store.current.expiresAt) === 'text-amber-400 font-semibold'
+                      'bg-red-900/50 text-red-300':    expiryStatus(store.current.expiresAt) === 'Expiré',
+                      'bg-amber-900/50 text-amber-300': expiryStatus(store.current.expiresAt) === 'Bientôt'
                     }">
                 {{ expiryStatus(store.current.expiresAt) }}
               </span>
@@ -157,7 +157,7 @@
           <div class="flex items-center justify-between p-4 border-b border-slate-700 print:hidden">
             <h3 class="font-semibold">Carte client</h3>
             <div class="flex gap-2">
-              <button @click="$el.ownerDocument.defaultView.print()" class="btn-primary text-sm py-1.5 px-4">Imprimer</button>
+              <button @click="printCard" class="btn-primary text-sm py-1.5 px-4">Imprimer</button>
               <button @click="showQrModal = false" class="btn-secondary text-sm py-1.5 px-3">✕</button>
             </div>
           </div>
@@ -173,7 +173,7 @@
                 'bg-purple-900 text-purple-300': store.current.type === 'BOUCLIER',
                 'bg-amber-900 text-amber-300':   store.current.type === 'VIP'
               }"
-            >{{ store.current.type }}</span>
+            >{{ CLIENT_TYPE_LABELS[store.current.type] ?? store.current.type }}</span>
             <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR Code" class="w-48 h-48 bg-white p-2 rounded-xl" />
             <p v-else class="text-slate-500 text-sm">Génération du QR...</p>
             <p class="text-xs text-slate-500 text-center">Présentez cette carte à la caisse</p>
@@ -204,6 +204,12 @@ import { useClientsStore } from '@/stores/clients'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import QRCode from 'qrcode'
 
+const CLIENT_TYPE_LABELS = {
+  CARTE:    'Carte passages',
+  BOUCLIER: 'Bouclier',
+  VIP:      'VIP'
+}
+
 const route  = useRoute()
 const router = useRouter()
 const store  = useClientsStore()
@@ -217,6 +223,10 @@ const showQrModal        = ref(false)
 const qrDataUrl          = ref(null)
 
 onMounted(() => store.loadById(route.params.id))
+
+function printCard() {
+  window.print()
+}
 
 async function openQrCard() {
   showQrModal.value = true
