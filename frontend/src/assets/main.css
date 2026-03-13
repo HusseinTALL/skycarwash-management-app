@@ -12,8 +12,8 @@
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   }
 
-  /* Minimum touch target size for mobile */
-  button, a, [role="button"] {
+  /* Minimum touch target size for mobile — applied only to navigation links */
+  a, [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
@@ -25,12 +25,14 @@
            text-white font-semibold rounded-xl px-6 py-3
            transition-colors duration-150 ease-in-out
            disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 44px;
   }
 
   .btn-secondary {
     @apply bg-slate-700 hover:bg-slate-600 active:bg-slate-500
            text-slate-100 font-semibold rounded-xl px-6 py-3
            transition-colors duration-150 ease-in-out;
+    min-height: 44px;
   }
 
   .card {
@@ -42,5 +44,32 @@
            text-slate-100 placeholder-slate-400
            focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
            transition-shadow duration-150;
+  }
+}
+
+/* ── Print styles (closing report) ─────────────────────────── */
+@media print {
+  body > * { display: none !important; }
+  #closing-report-content {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: white;
+    color: black;
+    padding: 2rem;
+    font-size: 14px;
+  }
+  #closing-report-content .text-slate-400,
+  #closing-report-content .text-slate-300,
+  #closing-report-content .text-slate-500 {
+    color: #555 !important;
+  }
+  #closing-report-content .text-brand-400,
+  #closing-report-content .text-green-400 {
+    color: #000 !important;
+    font-weight: bold;
+  }
+  #closing-report-content hr {
+    border-color: #ccc;
   }
 }

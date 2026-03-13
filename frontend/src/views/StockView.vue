@@ -156,12 +156,13 @@
   </div>
 
   <!-- ═══ Restock modal ════════════════════════════════════════════════ -->
+  <Teleport to="body">
   <div
     v-if="restockTarget"
-    class="fixed inset-0 z-50 flex items-end bg-black/60"
+    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
     @click.self="closeRestockModal"
   >
-    <div class="w-full bg-slate-800 rounded-t-3xl p-6 space-y-4">
+    <div class="w-full sm:max-w-md bg-slate-800 rounded-t-3xl sm:rounded-3xl p-6 space-y-4">
       <h3 class="text-lg font-bold text-center">Réapprovisionner</h3>
       <p class="text-center text-slate-400 text-sm">
         {{ restockTarget.name }} —
@@ -198,14 +199,16 @@
       </div>
     </div>
   </div>
+  </Teleport>
 
   <!-- ═══ Add / Edit product modal ═════════════════════════════════════ -->
+  <Teleport to="body">
   <div
     v-if="showProductForm"
-    class="fixed inset-0 z-50 flex items-end bg-black/60"
+    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
     @click.self="closeProductForm"
   >
-    <div class="w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="w-full sm:max-w-md bg-slate-800 rounded-t-3xl sm:rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <h3 class="text-lg font-bold text-center">
         {{ editingProduct ? 'Modifier le produit' : 'Nouveau produit' }}
       </h3>
@@ -264,6 +267,7 @@
       </button>
     </div>
   </div>
+  </Teleport>
 
   <ConfirmModal
     v-if="showDeleteConfirm"

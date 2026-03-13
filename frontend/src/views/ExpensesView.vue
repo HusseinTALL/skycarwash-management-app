@@ -8,7 +8,7 @@
       <div class="flex items-center justify-between">
         <div>
           <label class="block text-xs text-slate-400 mb-1">Mois</label>
-          <input v-model="selectedMonth" type="month" class="input" @change="load" />
+          <input v-model="selectedMonth" type="month" class="input-field" @change="load" />
         </div>
         <button @click="showForm = !showForm" class="btn-primary text-sm py-1.5 px-4 shrink-0 self-end">
           {{ showForm ? 'Annuler' : '+ Dépense' }}
@@ -20,7 +20,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Catégorie</label>
-            <select v-model="form.category" class="input w-full">
+            <select v-model="form.category" class="input-field">
               <option v-for="opt in CATEGORY_OPTS" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </option>
@@ -28,16 +28,16 @@
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">Montant (FCFA)</label>
-            <input v-model.number="form.amount" type="number" min="1" class="input w-full" placeholder="Ex : 15000" />
+            <input v-model.number="form.amount" type="number" min="1" class="input-field" placeholder="Ex : 15000" />
           </div>
         </div>
         <div>
           <label class="block text-xs text-slate-400 mb-1">Description (optionnelle)</label>
-          <input v-model="form.description" type="text" class="input w-full" placeholder="Ex : Achat shampoing" />
+          <input v-model="form.description" type="text" class="input-field" placeholder="Ex : Achat shampoing" />
         </div>
         <div>
           <label class="block text-xs text-slate-400 mb-1">Date</label>
-          <input v-model="form.expenseDate" type="date" class="input w-full" />
+          <input v-model="form.expenseDate" type="date" class="input-field" />
         </div>
         <p v-if="formError" class="text-red-400 text-sm">{{ formError }}</p>
         <button
@@ -98,7 +98,7 @@
           </p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <span class="font-bold text-red-400">{{ exp.amount.toLocaleString() }} F</span>
+          <span class="font-bold text-red-400">{{ exp.amount.toLocaleString('fr-FR') }} FCFA</span>
           <button
             @click="deleteExpense(exp)"
             class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-400 hover:bg-red-900/40 hover:text-red-400 transition-colors"
@@ -110,16 +110,28 @@
       <!-- Monthly total -->
       <div class="card bg-slate-700/50 flex justify-between items-center">
         <span class="text-sm text-slate-400">Total du mois</span>
-        <span class="font-bold text-red-400 text-lg">{{ totalAmount.toLocaleString() }} FCFA</span>
+        <span class="font-bold text-red-400 text-lg">{{ totalAmount.toLocaleString('fr-FR') }} FCFA</span>
       </div>
+
+      <p v-if="deleteError" class="text-red-400 text-sm text-center">{{ deleteError }}</p>
     </div>
 
   </div>
+
+  <ConfirmModal
+    v-if="pendingDeleteExpense"
+    title="Supprimer cette dépense ?"
+    :message="`Montant : ${pendingDeleteExpense.amount.toLocaleString('fr-FR')} FCFA`"
+    confirm-label="Supprimer"
+    @confirm="confirmDeleteExpense"
+    @cancel="pendingDeleteExpense = null"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const CATEGORY_OPTS = [
   { value: 'PRODUIT', label: 'Produits / Fournitures' },
@@ -147,6 +159,9 @@ const formError   = ref('')
 const form        = ref({ category: 'PRODUIT', amount: null, description: '', expenseDate: todayIso })
 
 const totalAmount = computed(() => expenses.value.reduce((sum, e) => sum + e.amount, 0))
+
+const pendingDeleteExpense = ref(null)
+const deleteError          = ref('')
 
 async function load() {
   loading.value = true
@@ -186,13 +201,19 @@ async function createExpense() {
   }
 }
 
-async function deleteExpense(exp) {
-  if (!confirm(`Supprimer cette dépense de ${exp.amount.toLocaleString()} FCFA ?`)) return
+function deleteExpense(exp) {
+  deleteError.value = ''
+  pendingDeleteExpense.value = exp
+}
+
+async function confirmDeleteExpense() {
+  const exp = pendingDeleteExpense.value
+  pendingDeleteExpense.value = null
   try {
     await api.delete(`/expenses/${exp.id}`)
     expenses.value = expenses.value.filter(e => e.id !== exp.id)
   } catch (err) {
-    alert(err.response?.data?.error || 'Erreur lors de la suppression.')
+    deleteError.value = err.response?.data?.error || 'Erreur lors de la suppression.'
   }
 }
 

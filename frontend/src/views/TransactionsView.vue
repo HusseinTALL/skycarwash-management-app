@@ -8,11 +8,11 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs text-slate-400 mb-1">Du</label>
-          <input v-model="filters.from" type="date" class="input w-full" @change="resetAndLoad" />
+          <input v-model="filters.from" type="date" class="input-field" @change="resetAndLoad" />
         </div>
         <div>
           <label class="block text-xs text-slate-400 mb-1">Au</label>
-          <input v-model="filters.to" type="date" class="input w-full" @change="resetAndLoad" />
+          <input v-model="filters.to" type="date" class="input-field" @change="resetAndLoad" />
         </div>
       </div>
 
@@ -31,6 +31,15 @@
             {{ opt.label }}
           </button>
         </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          @click="resetFilters"
+          class="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
+        >
+          Réinitialiser les filtres
+        </button>
       </div>
     </div>
 
@@ -94,7 +103,7 @@
           </div>
 
           <div class="text-right shrink-0">
-            <p class="font-bold text-white">{{ tx.amount.toLocaleString() }} F</p>
+            <p class="font-bold text-white">{{ tx.amount.toLocaleString('fr-FR') }} FCFA</p>
             <span
               class="text-xs px-2 py-0.5 rounded-full"
               :class="methodClass(tx.paymentMethod)"
@@ -129,7 +138,7 @@
       <!-- Total summary -->
       <div v-if="transactions.length > 0" class="card bg-slate-700/50 flex justify-between items-center">
         <span class="text-sm text-slate-400">Total (cette page)</span>
-        <span class="font-bold text-white">{{ pageTotal.toLocaleString() }} F</span>
+        <span class="font-bold text-white">{{ pageTotal.toLocaleString('fr-FR') }} FCFA</span>
       </div>
     </div>
   </div>
@@ -198,6 +207,11 @@ function selectMethod(val) {
   resetAndLoad()
 }
 
+function resetFilters() {
+  filters.value = { from: todayIso, to: todayIso, method: '' }
+  resetAndLoad()
+}
+
 function prevPage() {
   if (page.value > 0) { page.value--; load() }
 }
@@ -208,7 +222,7 @@ function nextPage() {
 
 function formatDateTime(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
-    day: '2-digit', month: '2-digit', year: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
 }

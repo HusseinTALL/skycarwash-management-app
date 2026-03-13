@@ -60,7 +60,7 @@
           <input
             v-model="userForm.name"
             type="text"
-            class="input w-full"
+            class="input-field"
             placeholder="Ex : Amadou Diallo"
           />
         </div>
@@ -69,13 +69,13 @@
           <input
             v-model="userForm.phone"
             type="tel"
-            class="input w-full"
+            class="input-field"
             placeholder="Ex : +22612345678"
           />
         </div>
         <div>
           <label class="block text-xs text-slate-400 mb-1">Rôle</label>
-          <select v-model="userForm.role" class="input w-full">
+          <select v-model="userForm.role" class="input-field">
             <option value="EMPLOYEE">Employé</option>
             <option value="PARTNER">Partenaire</option>
           </select>
@@ -114,7 +114,7 @@
         v-model="userSearch"
         type="search"
         placeholder="Rechercher un utilisateur..."
-        class="input w-full"
+        class="input-field"
       />
 
       <!-- Liste des utilisateurs -->
@@ -203,6 +203,8 @@
       </template>
     </div>
 
+    <p v-if="actionError" class="text-red-400 text-sm text-center">{{ actionError }}</p>
+
     <!-- ── À propos ──────────────────────────────────────────────────── -->
     <div class="card text-center py-6 space-y-1">
       <p class="text-slate-300 font-semibold">SkyCarWash Manager</p>
@@ -211,6 +213,16 @@
     </div>
 
     <!-- ── Service Form Modal ────────────────────────────────────────── -->
+    <ConfirmModal
+      v-if="pendingToggleUser"
+      :title="pendingToggleUser.active ? `Désactiver ${pendingToggleUser.name} ?` : `Réactiver ${pendingToggleUser.name} ?`"
+      :message="pendingToggleUser.active ? 'Ce compte ne pourra plus se connecter.' : 'Ce compte pourra de nouveau se connecter.'"
+      :confirm-label="pendingToggleUser.active ? 'Désactiver' : 'Réactiver'"
+      :confirm-class="pendingToggleUser.active ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'"
+      @confirm="confirmToggleStatus"
+      @cancel="pendingToggleUser = null"
+    />
+
     <Teleport to="body">
       <div
         v-if="showServiceModal"
@@ -228,7 +240,7 @@
               <input
                 v-model="form.name"
                 type="text"
-                class="input w-full"
+                class="input-field"
                 placeholder="Ex : Lavage intérieur"
               />
             </div>
@@ -239,7 +251,7 @@
                 v-model.number="form.price"
                 type="number"
                 min="0"
-                class="input w-full"
+                class="input-field"
                 placeholder="Ex : 3500"
               />
             </div>
@@ -249,7 +261,7 @@
               <input
                 v-model="form.category"
                 type="text"
-                class="input w-full"
+                class="input-field"
                 placeholder="Ex : Extérieur"
               />
             </div>
@@ -287,6 +299,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import { PHONE_REGEX } from '@/constants'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 // ── State ──────────────────────────────────────────────────────────── //
 const services        = ref([])
@@ -321,8 +334,11 @@ const paginatedUsers  = computed(() => {
 const revealedPassword      = ref(null)
 const revealedPasswordLabel = ref('')
 
-const servicesError = ref('')
-const usersError    = ref('')
+const servicesError  = ref('')
+const usersError     = ref('')
+const actionError    = ref('')
+
+const pendingToggleUser = ref(null)
 
 const showServiceModal = ref(false)
 const editingService   = ref(null)
@@ -417,23 +433,31 @@ async function createUser() {
   }
 }
 
-async function toggleStatus(user) {
+function toggleStatus(user) {
+  pendingToggleUser.value = user
+}
+
+async function confirmToggleStatus() {
+  const user = pendingToggleUser.value
+  pendingToggleUser.value = null
+  actionError.value = ''
   try {
     const { data } = await api.patch(`/manager/users/${user.id}/status`, { active: !user.active })
     const idx = users.value.findIndex(u => u.id === user.id)
     if (idx !== -1) users.value[idx] = data
   } catch (err) {
-    alert(err.response?.data?.error || 'Erreur lors de la mise à jour du statut.')
+    actionError.value = err.response?.data?.error || 'Erreur lors de la mise à jour du statut.'
   }
 }
 
 async function resetPassword(user) {
+  actionError.value = ''
   try {
     const { data } = await api.post(`/manager/users/${user.id}/reset-password`)
     revealedPassword.value      = data.temporaryPassword
     revealedPasswordLabel.value = `Nouveau mot de passe temporaire de ${user.name} :`
   } catch (err) {
-    alert(err.response?.data?.error || 'Erreur lors du reset.')
+    actionError.value = err.response?.data?.error || 'Erreur lors du reset.'
   }
 }
 

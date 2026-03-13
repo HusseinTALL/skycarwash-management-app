@@ -76,7 +76,7 @@
                     'bg-purple-900 text-purple-300': client.type === 'BOUCLIER',
                     'bg-amber-900 text-amber-300':   client.type === 'VIP'
                   }"
-                >{{ client.type }}</span>
+                >{{ CLIENT_TYPE_LABELS[client.type] ?? client.type }}</span>
               </div>
               <p class="text-sm text-slate-400 mt-0.5">{{ client.phone }}</p>
             </div>
@@ -137,6 +137,12 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
 
+const CLIENT_TYPE_LABELS = {
+  CARTE:    'Carte passages',
+  BOUCLIER: 'Bouclier',
+  VIP:      'VIP'
+}
+
 const store = useClientsStore()
 const query = ref('')
 let debounce
@@ -190,7 +196,7 @@ function onSearch() {
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function expiryClass(iso) {
