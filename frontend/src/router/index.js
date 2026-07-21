@@ -3,6 +3,12 @@ import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
+    path: '/landing',
+    name: 'Landing',
+    component: () => import('@/views/LandingView.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/LoginView.vue'),
@@ -15,11 +21,12 @@ const routes = [
       {
         path: '',
         redirect: () => {
-          // Redirect based on role after layout is mounted
+          // Authenticated staff go straight to their workspace; anonymous
+          // visitors land on the public marketing page (the business front door).
           const auth = useAuthStore()
           if (auth.isEmployee) return '/caisse'
           if (auth.isManager || auth.isPartner) return '/dashboard'
-          return '/login'
+          return '/landing'
         }
       },
       {
