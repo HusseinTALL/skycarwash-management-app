@@ -21,11 +21,12 @@ const routes = [
       {
         path: '',
         redirect: () => {
-          // Redirect based on role after layout is mounted
+          // Authenticated staff go straight to their workspace; anonymous
+          // visitors land on the public marketing page (the business front door).
           const auth = useAuthStore()
           if (auth.isEmployee) return '/caisse'
           if (auth.isManager || auth.isPartner) return '/dashboard'
-          return '/login'
+          return '/landing'
         }
       },
       {
