@@ -132,4 +132,4 @@ compose file.
 | `backend status: unhealthy` | `docker compose -f docker-compose.prod.yml logs backend` — usually DB creds or `JWT_SECRET` too short (min 32 chars). |
 | Site loads but API calls 502 | Backend not healthy yet; wait, or check backend logs. |
 | Login fails | Confirm you're using `+22600000000` / `Admin1234!` on first run. |
-| Port 80 already in use | Another web server is running: `ss -tlnp | grep :80`. |
+| Port 80 already in use | Another web server holds it: `ss -tlnp \| grep ':80 '`. Either free it (`systemctl disable --now apache2` / `nginx`) or set `HTTP_PORT=8090` in `.env` and re-run `./deploy.sh` (then `ufw allow 8090/tcp`). |
