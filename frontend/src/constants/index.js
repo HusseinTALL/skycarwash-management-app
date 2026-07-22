@@ -45,6 +45,28 @@ export const ROLE_LABELS = {
   MANAGER:  'Manager'
 }
 
+// ── Vehicle types (match caisse pricing grid) ──────────────────────── //
+export const VEHICLE_TYPES = {
+  MOTO:    'MOTO',
+  VOITURE: 'VOITURE',
+  SUV:     'SUV',
+  PICKUP:  'PICKUP'
+}
+
+export const VEHICLE_TYPE_LABELS = {
+  MOTO:    'Moto',
+  VOITURE: 'Voiture',
+  SUV:     '4x4 / SUV',
+  PICKUP:  'Pick-up'
+}
+
+export const VEHICLE_TYPE_ICONS = {
+  MOTO:    '🏍️',
+  VOITURE: '🚗',
+  SUV:     '🚙',
+  PICKUP:  '🛻'
+}
+
 // ── Stock units ────────────────────────────────────────────────────── //
 export const STOCK_UNITS = ['L', 'kg', 'g', 'unité']
 

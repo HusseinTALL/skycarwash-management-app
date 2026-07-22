@@ -33,6 +33,14 @@ public class Client {
     @Column(name = "expires_at")
     private LocalDate expiresAt;
 
+    /** Free-text CRM notes about the client */
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    /** Comma-separated tags (e.g. "flotte,fidèle") — kept flat for simple filtering */
+    @Column(length = 255)
+    private String tags;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;
