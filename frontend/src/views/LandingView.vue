@@ -3,6 +3,12 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import { vReveal } from '@/composables/useScrollReveal'
 
+/* ── Photography (bundled + optimized) ───────────────────────────── */
+import imgExteriorFoam from '@/assets/landing/wash-exterior-foam.jpg'
+import imgInterior from '@/assets/landing/wash-interior.jpg'
+import imgFoamBlue from '@/assets/landing/wash-foam-blue.jpg'
+import imgWheel from '@/assets/landing/wash-wheel.jpg'
+
 /* ── Business identity ───────────────────────────────────────────── */
 const BUSINESS = {
   name: 'Sky CarWash',
@@ -83,28 +89,32 @@ const services = [
     title: 'Une carrosserie qui capte la lumière.',
     body: "Prélavage, mousse active et rinçage sous pression décollent poussière et boue de l'harmattan sans rayer le vernis. Jantes et vitres finies à la main.",
     icon: '💧',
-    accent: 'from-sky-400 to-cyan-300'
+    img: imgFoamBlue,
+    alt: 'Carrosserie sportive bleue recouverte de mousse active lors du lavage extérieur'
   },
   {
     tag: 'Intérieur',
     title: "Un habitacle qui respire le neuf.",
     body: 'Aspiration profonde, nettoyage des plastiques et traitement des tapis. On efface la poussière rouge pour ne laisser qu’une odeur de propre.',
     icon: '🧴',
-    accent: 'from-emerald-400 to-teal-300'
+    img: imgInterior,
+    alt: 'Nettoyage détaillé du volant en cuir avec une microfibre'
   },
   {
     tag: 'Premium',
     title: 'Le polissage qui réveille la teinte.',
     body: "Traitement correcteur qui gomme les micro-rayures et ravive la profondeur de la peinture. Votre véhicule retrouve son éclat de première main.",
     icon: '🪩',
-    accent: 'from-amber-300 to-yellow-200'
+    img: imgWheel,
+    alt: 'Jante et carrosserie brillantes sous le jet, finition premium'
   },
   {
     tag: 'Protection',
     title: 'Une brillance qui dure des semaines.',
     body: 'Cire et scellant hydrophobe : la pluie perle, la poussière adhère moins, chaque lavage suivant devient plus simple. La protection invisible qui change tout.',
     icon: '🛡️',
-    accent: 'from-fuchsia-400 to-purple-300'
+    img: imgExteriorFoam,
+    alt: 'Voiture noire couverte de mousse, gouttes perlant sur la peinture protégée'
   }
 ]
 
@@ -212,6 +222,7 @@ function scrollTo(id) {
     <!-- ══ HERO ═══════════════════════════════════════════════════ -->
     <section id="top" class="hero">
       <div class="hero__bg" :style="{ transform: `translateY(${heroParallax * 0.5}px)` }">
+        <div class="hero__photo" :style="{ backgroundImage: `url(${imgExteriorFoam})` }" />
         <div class="blob blob--1" />
         <div class="blob blob--2" />
         <div class="blob blob--3" />
@@ -263,11 +274,18 @@ function scrollTo(id) {
         <h2 class="section-title">Quatre gestes. Un résultat qui se remarque.</h2>
       </div>
 
-      <div class="service-panel" v-for="(s, i) in services" :key="s.tag" v-reveal:0.2>
-        <div class="service-panel__num">{{ String(i + 1).padStart(2, '0') }}</div>
-        <div class="service-panel__icon" :class="`grad-${i}`">
-          <span>{{ s.icon }}</span>
-        </div>
+      <div
+        class="service-panel"
+        :class="{ 'service-panel--reverse': i % 2 === 1 }"
+        v-for="(s, i) in services"
+        :key="s.tag"
+        v-reveal:0.15
+      >
+        <figure class="service-panel__media">
+          <img :src="s.img" :alt="s.alt" loading="lazy" decoding="async" />
+          <span class="service-panel__num">{{ String(i + 1).padStart(2, '0') }}</span>
+          <span class="service-panel__chip">{{ s.icon }} {{ s.tag }}</span>
+        </figure>
         <div class="service-panel__text">
           <span class="service-panel__tag">{{ s.tag }}</span>
           <h3 :class="['service-panel__title', `text-grad-${i}`]">{{ s.title }}</h3>
@@ -501,6 +519,15 @@ function scrollTo(id) {
   text-align: center; padding: 120px 24px 80px; overflow: hidden;
 }
 .hero__bg { position: absolute; inset: -10% -10% 0; z-index: 0; }
+.hero__photo {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center 35%;
+  opacity: 0.42;
+  /* Fade the photo out toward the edges/bottom so the headline stays legible */
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 60% 42%, #000 25%, transparent 78%);
+  mask-image: radial-gradient(ellipse 90% 85% at 60% 42%, #000 25%, transparent 78%);
+  filter: saturate(112%) contrast(104%);
+}
 .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; animation: drift 16s ease-in-out infinite; }
 .blob--1 { width: 46vw; height: 46vw; top: -6%; left: -4%; background: radial-gradient(circle, #0ea5e9, transparent 70%); }
 .blob--2 { width: 40vw; height: 40vw; bottom: -12%; right: -6%; background: radial-gradient(circle, #22d3ee, transparent 70%); animation-delay: -5s; }
@@ -526,7 +553,9 @@ function scrollTo(id) {
 @keyframes shine { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
 .hero::after {
   content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(to bottom, transparent 55%, var(--bg) 98%);
+  background:
+    radial-gradient(ellipse 62% 55% at 50% 42%, transparent 38%, rgba(5,7,13,0.5) 100%),
+    linear-gradient(to bottom, rgba(5,7,13,0.35) 0%, transparent 28%, transparent 55%, var(--bg) 98%);
 }
 
 .hero__content { position: relative; z-index: 2; max-width: 900px; }
@@ -601,27 +630,44 @@ function scrollTo(id) {
 .section-title { font-size: clamp(1.9rem, 4.6vw, 3.2rem); font-weight: 800; margin: 0; }
 .section-note { color: var(--muted); margin-top: 16px; font-size: 0.95rem; }
 
-/* ── Services ─────────────────────────────────────────────────────── */
-.services { max-width: 1080px; margin: 0 auto; padding: 110px 24px; }
+/* ── Services (image-driven, alternating) ─────────────────────────── */
+.services { max-width: 1140px; margin: 0 auto; padding: 110px 24px; }
 .service-panel {
-  display: grid; grid-template-columns: 90px 120px 1fr; align-items: center; gap: 28px;
-  padding: 40px 0; border-top: 1px solid rgba(255,255,255,0.08);
+  display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 56px;
+  padding: 46px 0;
 }
-.service-panel:last-child { border-bottom: 1px solid rgba(255,255,255,0.08); }
-.service-panel__num { font-size: 2.2rem; font-weight: 800; color: rgba(255,255,255,0.14); }
-.service-panel__icon {
-  width: 108px; height: 108px; border-radius: 26px; display: grid; place-items: center;
-  font-size: 3rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 0 20px 50px -20px rgba(0,0,0,0.7);
+.service-panel--reverse .service-panel__media { order: 2; }
+
+.service-panel__media {
+  position: relative; aspect-ratio: 4 / 3; border-radius: 26px; overflow: hidden;
+  box-shadow: 0 34px 80px -30px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,255,255,0.08);
 }
-.grad-0 { background: linear-gradient(135deg, rgba(56,189,248,0.25), rgba(34,211,238,0.12)); }
-.grad-1 { background: linear-gradient(135deg, rgba(52,211,153,0.25), rgba(45,212,191,0.12)); }
-.grad-2 { background: linear-gradient(135deg, rgba(251,211,141,0.28), rgba(250,204,21,0.12)); }
-.grad-3 { background: linear-gradient(135deg, rgba(232,121,249,0.25), rgba(167,139,250,0.12)); }
+.service-panel__media img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.service-panel__media::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(200deg, transparent 45%, rgba(5,7,13,0.6) 100%);
+}
+.service-panel:hover .service-panel__media img { transform: scale(1.06); }
+.service-panel__num {
+  position: absolute; top: 16px; left: 20px; z-index: 1;
+  font-size: 2.4rem; font-weight: 800; color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+}
+.service-panel__chip {
+  position: absolute; bottom: 16px; left: 20px; z-index: 1;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; color: var(--ink);
+  padding: 7px 14px; border-radius: 999px;
+  background: rgba(5,7,13,0.5); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.16);
+}
 .service-panel__tag {
   display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
 }
-.service-panel__title { font-size: clamp(1.4rem, 3vw, 2.1rem); font-weight: 800; margin: 0 0 14px; }
+.service-panel__title { font-size: clamp(1.5rem, 3vw, 2.3rem); font-weight: 800; margin: 0 0 16px; }
 .text-grad-0, .text-grad-1, .text-grad-2, .text-grad-3 {
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
@@ -629,11 +675,11 @@ function scrollTo(id) {
 .text-grad-1 { background-image: linear-gradient(120deg, #bbf7d0, #34d399); }
 .text-grad-2 { background-image: linear-gradient(120deg, #fde68a, #f4c964); }
 .text-grad-3 { background-image: linear-gradient(120deg, #f5d0fe, #a78bfa); }
-.service-panel__body { color: var(--muted); font-size: 1.05rem; line-height: 1.65; max-width: 560px; }
-@media (max-width: 720px) {
-  .service-panel { grid-template-columns: 1fr; gap: 16px; text-align: left; }
-  .service-panel__num { font-size: 1.4rem; }
-  .service-panel__icon { width: 84px; height: 84px; font-size: 2.3rem; }
+.service-panel__body { color: var(--muted); font-size: 1.08rem; line-height: 1.7; max-width: 520px; }
+@media (max-width: 760px) {
+  .service-panel { grid-template-columns: 1fr; gap: 24px; padding: 34px 0; }
+  .service-panel--reverse .service-panel__media { order: 0; }
+  .service-panel__media { aspect-ratio: 16 / 10; }
 }
 
 /* ── Pricing ──────────────────────────────────────────────────────── */
