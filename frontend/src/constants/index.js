@@ -74,6 +74,44 @@ export const STOCK_UNITS = ['L', 'kg', 'g', 'unité']
 /** Accepts optional leading + then at least 8 digits (no spaces/dashes) */
 export const PHONE_REGEX = /^\+?[0-9]{8,}$/
 
+// ── Vehicle inspection reports ─────────────────────────────────────── //
+export const PHOTO_ZONES = {
+  AVANT:     'AVANT',
+  ARRIERE:   'ARRIERE',
+  GAUCHE:    'GAUCHE',
+  DROIT:     'DROIT',
+  INTERIEUR: 'INTERIEUR',
+  COFFRE:    'COFFRE',
+  DOMMAGE:   'DOMMAGE',
+  AUTRE:     'AUTRE'
+}
+
+export const PHOTO_ZONE_LABELS = {
+  AVANT:     'Avant',
+  ARRIERE:   'Arrière',
+  GAUCHE:    'Côté gauche',
+  DROIT:     'Côté droit',
+  INTERIEUR: 'Intérieur',
+  COFFRE:    'Coffre',
+  DOMMAGE:   'Dommage',
+  AUTRE:     'Autre'
+}
+
+/** Ordered zones proposed by default in the capture UI. */
+export const DEFAULT_PHOTO_ZONES = ['AVANT', 'ARRIERE', 'GAUCHE', 'DROIT', 'INTERIEUR', 'COFFRE']
+
+export const INSPECTION_STATUS_LABELS = {
+  DRAFT:     'Brouillon',
+  VALIDATED: 'État initial enregistré',
+  COMPLETED: 'Lavage terminé'
+}
+
+/** Common found-item presets for quick selection. */
+export const FOUND_ITEM_PRESETS = [
+  'Argent liquide', 'Téléphone', 'Sac', 'Documents', 'Clés',
+  'Lunettes', 'Chargeur', 'Ordinateur', 'Bijoux', 'Autres'
+]
+
 // ── WS dashboard events ────────────────────────────────────────────── //
 export const WS_EVENTS = {
   TRANSACTION_CREATED:   'transaction.created',

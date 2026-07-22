@@ -69,13 +69,21 @@
           <span v-else>Se connecter</span>
         </button>
       </form>
+
+      <!-- Espace client (accès sans compte) -->
+      <p class="text-center text-sm text-slate-500 mt-6">
+        Client ?
+        <RouterLink to="/rapports" class="text-brand-400 hover:text-brand-300 font-medium">
+          Consulter mes rapports de lavage
+        </RouterLink>
+      </p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { PHONE_REGEX } from '@/constants'
 

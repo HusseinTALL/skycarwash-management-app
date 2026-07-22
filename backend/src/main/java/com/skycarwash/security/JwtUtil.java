@@ -25,6 +25,9 @@ public class JwtUtil {
     @Value("${jwt.expiration.partner}")
     private long partnerExpirationSec;
 
+    @Value("${jwt.expiration.portal}")
+    private long portalExpirationSec;
+
     public JwtUtil(@Value("${jwt.secret}") String secret) {
         // Always use UTF-8 so key bytes are identical on every platform/container
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
@@ -52,6 +55,24 @@ public class JwtUtil {
                 .expiration(new Date(System.currentTimeMillis() + expirationSec * 1000))
                 .signWith(key)
                 .compact();
+    }
+
+    /**
+     * Jeton du portail client (accès sans compte staff).
+     * Marqué {@code type=PORTAL} pour être distingué des jetons utilisateurs.
+     */
+    public String generatePortalToken(String phone) {
+        return Jwts.builder()
+                .subject(phone)
+                .claim("type", "PORTAL")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + portalExpirationSec * 1000))
+                .signWith(key)
+                .compact();
+    }
+
+    public String extractType(String token) {
+        return extractAllClaims(token).get("type", String.class);
     }
 
     public Claims extractAllClaims(String token) {

@@ -5,20 +5,24 @@ import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
+/**
+ * Authentifie les jetons du portail client ({@code type=PORTAL}).
+ * Le principal est le numéro de téléphone ; l'autorité est {@code ROLE_PORTAL}.
+ */
 @Component
 @RequiredArgsConstructor
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class PortalAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -35,23 +39,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         final String token = authHeader.substring(7);
 
-        if (!jwtUtil.isTokenValid(token)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (jwtUtil.isTokenValid(token)
+                && "PORTAL".equals(jwtUtil.extractType(token))
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-        // Portal tokens are handled by PortalAuthFilter — never treated as staff.
-        if ("PORTAL".equals(jwtUtil.extractType(token))) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        final String phone = jwtUtil.extractPhone(token);
-
-        if (phone != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(phone);
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            String phone = jwtUtil.extractPhone(token);
+            var authToken = new UsernamePasswordAuthenticationToken(
+                    phone, null, List.of(new SimpleGrantedAuthority("ROLE_PORTAL")));
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }

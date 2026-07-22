@@ -28,6 +28,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final com.skycarwash.security.PortalAuthFilter portalAuthFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
     @Value("${cors.allowed-origins}")
@@ -57,6 +58,9 @@ public class SecurityConfig {
                         // CORS preflight must always pass through without auth checks
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Client portal – login is public; everything else needs a PORTAL token
+                        .requestMatchers("/api/portal/login").permitAll()
+                        .requestMatchers("/api/portal/**").hasRole("PORTAL")
                         // Actuator health probes (Railway / Render / k8s)
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Swagger UI – restrict to authenticated users
@@ -80,6 +84,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/transactions/**").hasAnyRole("EMPLOYEE", "MANAGER")
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/today").hasAnyRole("MANAGER", "PARTNER")
                         .requestMatchers(HttpMethod.GET,  "/api/transactions/history").hasAnyRole("MANAGER", "PARTNER")
+                        // Inspection reports – staff capture & review
+                        .requestMatchers(HttpMethod.POST, "/api/inspections/**").hasAnyRole("EMPLOYEE", "MANAGER")
+                        .requestMatchers(HttpMethod.GET,  "/api/inspections/**").hasAnyRole("EMPLOYEE", "MANAGER", "PARTNER")
                         // Dashboard – manager + partner
                         .requestMatchers("/api/dashboard/**").hasAnyRole("MANAGER", "PARTNER")
                         // Expenses – manager only
@@ -89,6 +96,7 @@ public class SecurityConfig {
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(portalAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
