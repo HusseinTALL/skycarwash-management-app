@@ -27,15 +27,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InspectionService {
 
-    private final InspectionReportRepository   reportRepository;
-    private final InspectionPhotoRepository    photoRepository;
-    private final InspectionDamageRepository   damageRepository;
+    private final InspectionReportRepository    reportRepository;
+    private final InspectionPhotoRepository     photoRepository;
+    private final InspectionDamageRepository    damageRepository;
     private final InspectionFoundItemRepository foundItemRepository;
-    private final PortalCustomerRepository      portalCustomerRepository;
-    private final TransactionRepository         transactionRepository;
-    private final ClientRepository              clientRepository;
-    private final UserRepository                userRepository;
-    private final PasswordEncoder               passwordEncoder;
+    private final InspectionSignatureRepository signatureRepository;
+    private final PortalCustomerRepository       portalCustomerRepository;
+    private final TransactionRepository          transactionRepository;
+    private final ClientRepository               clientRepository;
+    private final UserRepository                 userRepository;
+    private final PasswordEncoder                passwordEncoder;
 
     @Value("${app.agency-name:SkyCarWash}")
     private String agencyName;
@@ -178,6 +179,54 @@ public class InspectionService {
     }
 
     // ================================================================== //
+    //  SIGNATURE (validation de l'état initial par le client)              //
+    // ================================================================== //
+
+    /** Saves (or replaces) the client's signature validating the initial state. */
+    @Transactional
+    public void saveSignature(Long reportId, MultipartFile file, String signerName) {
+        InspectionReport report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new EntityNotFoundException("Rapport introuvable : " + reportId));
+
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("Signature manquante");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BusinessException("La signature doit être une image");
+        }
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessException("Impossible de lire la signature");
+        }
+
+        InspectionSignature signature = signatureRepository.findByReportId(reportId)
+                .orElseGet(() -> InspectionSignature.builder().report(report).build());
+        signature.setSignerName(blankToNull(signerName));
+        signature.setContentType(contentType);
+        signature.setImageData(bytes);
+        signature.setSignedAt(LocalDateTime.now());
+        signatureRepository.save(signature);
+
+        log.info("Signature enregistrée pour le rapport #{}", reportId);
+    }
+
+    @Transactional(readOnly = true)
+    public InspectionSignature getSignature(Long reportId) {
+        return signatureRepository.findByReportId(reportId)
+                .orElseThrow(() -> new EntityNotFoundException("Aucune signature pour le rapport : " + reportId));
+    }
+
+    @Transactional(readOnly = true)
+    public InspectionSignature getSignatureForPhone(Long reportId, String phone) {
+        InspectionSignature signature = getSignature(reportId);
+        assertOwnedByPhone(signature.getReport(), phone);
+        return signature;
+    }
+
+    // ================================================================== //
     //  READ (staff)                                                        //
     // ================================================================== //
 
@@ -268,6 +317,8 @@ public class InspectionService {
                         i.getQuantity(), i.getRemark(), i.getPhotoId()))
                 .toList();
 
+        var sig = signatureRepository.findMetaByReportId(r.getId()).orElse(null);
+
         Transaction tx = r.getTransaction();
         return new InspectionReportResponse(
                 r.getId(),
@@ -287,6 +338,9 @@ public class InspectionService {
                 tx != null ? tx.getPaymentMethod().name() : null,
                 tx != null ? tx.getCreatedAt() : null,
                 tx != null ? (tx.getCancelledAt() != null) : null,
+                sig != null,
+                sig != null ? sig.getSignerName() : null,
+                sig != null ? sig.getSignedAt() : null,
                 photos, damages, items
         );
     }

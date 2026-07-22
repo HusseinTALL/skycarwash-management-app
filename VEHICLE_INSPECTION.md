@@ -25,11 +25,13 @@ Le rapport est rattaché à une **commande** (`transaction`), mais peut aussi
    commande et le client éventuel).
 2. L'employé renseigne : type de véhicule, immatriculation, nom/téléphone du
    client, **photos par zone** (avant, arrière, côtés, intérieur, coffre),
-   **dommages existants** (avec photo), **objets retrouvés**, remarques.
+   **dommages existants** (avec photo), **objets retrouvés**, remarques, et fait
+   **signer le client** (canvas tactile) pour valider l'état initial.
 3. À l'enregistrement, l'état initial est stocké (statut `VALIDATED`) et un
    **accès portail** est créé pour le client (code = 4 derniers chiffres du tél.).
 4. Après le lavage, depuis le détail du rapport, l'employé ajoute les
-   **photos « après »** (statut → `COMPLETED`).
+   **photos « après »** (statut → `COMPLETED`). La **signature** peut aussi être
+   recueillie depuis le détail si elle n'a pas été prise à la caisse.
 5. Le détail affiche un **QR code** vers le portail à montrer au client.
 
 L'onglet **« Rapports »** liste les contrôles récents.
@@ -63,9 +65,11 @@ et photos (jeton JWT `type=PORTAL`, filtre `PortalAuthFilter`).
 |---|---|---|
 | `POST` | `/api/inspections` | Créer un rapport (JSON) |
 | `POST` | `/api/inspections/{id}/photos` | Ajouter une photo (multipart : `file`, `phase`, `zone`, `caption?`, `damageId?`, `foundItemId?`) |
+| `POST` | `/api/inspections/{id}/signature` | Signature du client (multipart : `file`, `signerName?`) |
 | `GET` | `/api/inspections` | Liste récente (ou `?transactionId=` pour le rapport d'une commande) |
-| `GET` | `/api/inspections/{id}` | Détail complet |
+| `GET` | `/api/inspections/{id}` | Détail complet (inclut `signed`, `signerName`, `signedAt`) |
 | `GET` | `/api/inspections/photos/{photoId}` | Octets d'une photo |
+| `GET` | `/api/inspections/{id}/signature` | Octets de la signature |
 
 `POST` réservé à `EMPLOYEE`/`MANAGER` ; `GET` ouvert aussi à `PARTNER`.
 
@@ -78,6 +82,7 @@ et photos (jeton JWT `type=PORTAL`, filtre `PortalAuthFilter`).
 | `GET` | `/api/portal/reports` | portal — historique du numéro |
 | `GET` | `/api/portal/reports/{id}` | portal — détail (cloisonné) |
 | `GET` | `/api/portal/photos/{photoId}` | portal — octets (cloisonné) |
+| `GET` | `/api/portal/reports/{id}/signature` | portal — signature (cloisonné) |
 
 ---
 
@@ -87,6 +92,7 @@ et photos (jeton JWT `type=PORTAL`, filtre `PortalAuthFilter`).
 - `inspection_photo` — octets `bytea`, `phase` (BEFORE/AFTER), `zone`
 - `inspection_damage` — dommages pré-existants (+ photo optionnelle)
 - `inspection_found_item` — objets retrouvés (nom, quantité, description, remarque, photo)
+- `inspection_signature` — signature du client (`bytea`), signataire, horodatage (migration `V5`)
 - `portal_customer` — accès portail (téléphone + code hashé BCrypt)
 
 ---
@@ -103,6 +109,5 @@ et photos (jeton JWT `type=PORTAL`, filtre `PortalAuthFilter`).
 
 ## Non couvert (V2)
 
-- **Signature électronique** du client sur tablette (validation de l'état initial).
-- Migration du stockage des photos vers un stockage objet (Supabase Storage / S3).
+- Migration du stockage des photos/signatures vers un stockage objet (Supabase Storage / S3).
 - Capture des photos en mode **hors-ligne** (le rapport nécessite la connexion).

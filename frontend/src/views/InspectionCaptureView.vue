@@ -124,6 +124,13 @@
       <textarea v-model="form.remarks" rows="3" class="input-field" placeholder="Observations complémentaires…"></textarea>
     </section>
 
+    <!-- ── Signature du client ──────────────────────────────── -->
+    <section class="card space-y-2">
+      <h2 class="font-semibold text-slate-200">Signature du client</h2>
+      <p class="text-xs text-slate-500">Le client valide l'état initial du véhicule (facultatif).</p>
+      <SignaturePad ref="signaturePad" />
+    </section>
+
     <p v-if="errorMsg" class="text-red-400 text-sm text-center">{{ errorMsg }}</p>
 
     <!-- Sticky submit -->
@@ -143,6 +150,7 @@
 import { reactive, ref, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useInspectionStore } from '@/stores/inspection'
+import SignaturePad from '@/components/SignaturePad.vue'
 import {
   VEHICLE_TYPE_LABELS, VEHICLE_TYPE_ICONS,
   DEFAULT_PHOTO_ZONES, PHOTO_ZONE_LABELS, FOUND_ITEM_PRESETS
@@ -166,6 +174,7 @@ const form = reactive({
 const zonePhotos = reactive({}) // zone -> { file, preview }
 const damages = ref([])
 const items = ref([])
+const signaturePad = ref(null)
 const objectUrls = []
 
 const saving = ref(false)
@@ -227,6 +236,13 @@ async function submit() {
     for (let i = 0; i < uploads.length; i++) {
       progress.value = `Photos ${i + 1}/${uploads.length}…`
       await store.uploadPhoto(report.id, uploads[i])
+    }
+
+    // Signature du client (facultative)
+    if (signaturePad.value && !signaturePad.value.isEmpty()) {
+      progress.value = 'Signature…'
+      const blob = await signaturePad.value.toBlob()
+      if (blob) await store.uploadSignature(report.id, blob, form.customerName)
     }
 
     router.replace({ name: 'InspectionDetail', params: { id: report.id } })

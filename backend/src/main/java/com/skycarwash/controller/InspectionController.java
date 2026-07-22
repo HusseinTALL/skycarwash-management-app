@@ -66,13 +66,29 @@ public class InspectionController {
     @GetMapping("/photos/{photoId}")
     public ResponseEntity<byte[]> photo(@PathVariable Long photoId) {
         InspectionPhoto photo = inspectionService.getPhoto(photoId);
-        return imageResponse(photo);
+        return imageResponse(photo.getContentType(), photo.getImageData());
     }
 
-    static ResponseEntity<byte[]> imageResponse(InspectionPhoto photo) {
+    // ── Signature électronique du client ─────────────────────────────
+    @PostMapping(value = "/{id}/signature", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Void> saveSignature(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "signerName", required = false) String signerName) {
+        inspectionService.saveSignature(id, file, signerName);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/{id}/signature")
+    public ResponseEntity<byte[]> signature(@PathVariable Long id) {
+        var sig = inspectionService.getSignature(id);
+        return imageResponse(sig.getContentType(), sig.getImageData());
+    }
+
+    static ResponseEntity<byte[]> imageResponse(String contentType, byte[] data) {
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(photo.getContentType()))
+                .contentType(MediaType.parseMediaType(contentType))
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePrivate())
-                .body(photo.getImageData());
+                .body(data);
     }
 }

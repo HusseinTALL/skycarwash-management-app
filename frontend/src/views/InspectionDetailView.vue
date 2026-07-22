@@ -29,6 +29,16 @@
 
       <InspectionReportContent :report="report" variant="staff" />
 
+      <!-- Signature du client (si pas encore signé) -->
+      <section v-if="!report.signed" class="card space-y-3">
+        <h2 class="font-semibold text-slate-200">Faire signer le client</h2>
+        <p class="text-xs text-slate-500">Le client valide l'état initial du véhicule sur l'écran.</p>
+        <SignaturePad ref="signaturePad" />
+        <button @click="saveSignature" class="btn-primary w-full text-sm" :disabled="signing">
+          {{ signing ? 'Enregistrement…' : 'Enregistrer la signature' }}
+        </button>
+      </section>
+
       <!-- Ajouter des photos après lavage -->
       <section class="card space-y-3">
         <h2 class="font-semibold text-slate-200">Ajouter des photos « après lavage »</h2>
@@ -58,6 +68,7 @@ import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import { useInspectionStore } from '@/stores/inspection'
 import InspectionReportContent from '@/components/InspectionReportContent.vue'
+import SignaturePad from '@/components/SignaturePad.vue'
 import { DEFAULT_PHOTO_ZONES, PHOTO_ZONE_LABELS } from '@/constants'
 
 const route = useRoute()
@@ -66,6 +77,8 @@ const store = useInspectionStore()
 const report = ref(null)
 const loading = ref(true)
 const uploading = ref(false)
+const signing = ref(false)
+const signaturePad = ref(null)
 const showQr = ref(false)
 const qrDataUrl = ref('')
 const portalUrl = `${window.location.origin}/rapports`
@@ -76,6 +89,21 @@ async function load() {
     report.value = await store.fetchReport(route.params.id)
   } finally {
     loading.value = false
+  }
+}
+
+async function saveSignature() {
+  if (signing.value) return
+  if (signaturePad.value.isEmpty()) return
+  signing.value = true
+  try {
+    const blob = await signaturePad.value.toBlob()
+    if (blob) {
+      await store.uploadSignature(report.value.id, blob, report.value.customerName)
+      await load()
+    }
+  } finally {
+    signing.value = false
   }
 }
 

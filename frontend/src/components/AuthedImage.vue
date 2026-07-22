@@ -23,7 +23,9 @@ import api from '@/api/axios'
 import portalApi from '@/api/portalApi'
 
 const props = defineProps({
-  photoId:      { type: [Number, String], required: true },
+  photoId:      { type: [Number, String], default: null },
+  // Full path relative to the chosen client's baseURL (overrides photoId).
+  path:         { type: String, default: null },
   variant:      { type: String, default: 'staff' }, // 'staff' | 'portal'
   alt:          { type: String, default: 'Photo du véhicule' },
   wrapperClass: { type: String, default: '' },
@@ -45,9 +47,9 @@ async function load() {
   error.value = false
   try {
     const client = props.variant === 'portal' ? portalApi : api
-    const path = props.variant === 'portal'
+    const path = props.path || (props.variant === 'portal'
       ? `/photos/${props.photoId}`
-      : `/inspections/photos/${props.photoId}`
+      : `/inspections/photos/${props.photoId}`)
     const { data } = await client.get(path, { responseType: 'blob' })
     objectUrl.value = URL.createObjectURL(data)
   } catch {
@@ -55,6 +57,6 @@ async function load() {
   }
 }
 
-watch(() => props.photoId, load, { immediate: true })
+watch(() => [props.photoId, props.path], load, { immediate: true })
 onBeforeUnmount(revoke)
 </script>

@@ -77,6 +77,15 @@
       <h2 class="font-semibold text-slate-200">Remarques</h2>
       <p class="text-sm text-slate-400 whitespace-pre-line">{{ report.remarks }}</p>
     </section>
+
+    <!-- ── Signature du client ────────────────────────────────── -->
+    <section v-if="report.signed" class="card space-y-2">
+      <h2 class="font-semibold text-slate-200">Signature du client</h2>
+      <AuthedImage :path="signaturePath" :variant="variant" fit="contain" wrapper-class="h-28 bg-white rounded-xl" />
+      <p class="text-xs text-green-400">
+        ✓ État initial validé par {{ report.signerName || 'le client' }} le {{ formatDateTime(report.signedAt) }}.
+      </p>
+    </section>
   </div>
 </template>
 
@@ -111,6 +120,9 @@ const vehicleLabel = computed(() => {
   return props.report.vehicleLabel ? `${type} — ${props.report.vehicleLabel}` : type
 })
 const statusLabel = computed(() => INSPECTION_STATUS_LABELS[props.report.status] || props.report.status)
+const signaturePath = computed(() => props.variant === 'portal'
+  ? `/reports/${props.report.id}/signature`
+  : `/inspections/${props.report.id}/signature`)
 
 function zoneLabel(z) { return PHOTO_ZONE_LABELS[z] || z }
 function paymentLabel(m) { return PAYMENT_LABELS[m] || m }

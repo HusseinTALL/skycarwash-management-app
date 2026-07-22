@@ -52,6 +52,13 @@ public class PortalController {
     public ResponseEntity<byte[]> photo(
             @PathVariable Long photoId, @AuthenticationPrincipal String phone) {
         InspectionPhoto photo = inspectionService.getPhotoForPhone(photoId, phone);
-        return InspectionController.imageResponse(photo);
+        return InspectionController.imageResponse(photo.getContentType(), photo.getImageData());
+    }
+
+    @GetMapping("/reports/{id}/signature")
+    public ResponseEntity<byte[]> signature(
+            @PathVariable Long id, @AuthenticationPrincipal String phone) {
+        var sig = inspectionService.getSignatureForPhone(id, phone);
+        return InspectionController.imageResponse(sig.getContentType(), sig.getImageData());
     }
 }

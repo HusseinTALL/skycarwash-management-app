@@ -29,6 +29,7 @@ class InspectionServiceTest {
                 mock(InspectionPhotoRepository.class),
                 mock(InspectionDamageRepository.class),
                 mock(InspectionFoundItemRepository.class),
+                mock(InspectionSignatureRepository.class),
                 portalRepo,
                 mock(TransactionRepository.class),
                 mock(ClientRepository.class),

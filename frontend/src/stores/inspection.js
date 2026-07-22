@@ -39,6 +39,17 @@ export const useInspectionStore = defineStore('inspection', () => {
     return data
   }
 
+  /** Upload the client's signature (PNG blob) validating the initial state. */
+  async function uploadSignature(reportId, blob, signerName) {
+    const form = new FormData()
+    form.append('file', blob, 'signature.png')
+    if (signerName) form.append('signerName', signerName)
+    await api.post(`/inspections/${reportId}/signature`, form, {
+      headers: { 'Content-Type': undefined },
+      timeout: 30000
+    })
+  }
+
   async function fetchReport(id) {
     const { data } = await api.get(`/inspections/${id}`)
     return data
@@ -59,5 +70,5 @@ export const useInspectionStore = defineStore('inspection', () => {
     }
   }
 
-  return { recent, loading, createReport, uploadPhoto, fetchReport, fetchByTransaction, fetchRecent }
+  return { recent, loading, createReport, uploadPhoto, uploadSignature, fetchReport, fetchByTransaction, fetchRecent }
 })

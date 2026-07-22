@@ -23,6 +23,10 @@ public record InspectionReportResponse(
         String paymentMethod,
         LocalDateTime orderCreatedAt,
         Boolean orderCancelled,
+        // ── Signature client ──────────────────────────────────────
+        boolean signed,
+        String signerName,
+        LocalDateTime signedAt,
         // ── Détails ───────────────────────────────────────────────
         List<PhotoDto> photos,
         List<DamageDto> damages,
