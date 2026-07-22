@@ -63,6 +63,15 @@
         Annuler cette transaction
       </button>
 
+      <!-- Rapport d'état du véhicule – contrôle visuel avant lavage -->
+      <button
+        v-if="tx.id && !tx.cancelledAt"
+        @click="openInspection()"
+        class="w-full py-3 rounded-xl bg-brand-600/20 border border-brand-600 text-brand-300 hover:bg-brand-600/30 text-sm font-medium transition-colors no-print"
+      >
+        📋 Rapport d'état du véhicule
+      </button>
+
       <!-- Action buttons -->
       <div class="flex gap-3 no-print">
         <button
@@ -81,15 +90,25 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCaisseStore } from '@/stores/caisse'
 import { PAYMENT_LABELS } from '@/constants'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const caisse  = useCaisseStore()
+const router  = useRouter()
 const tx      = computed(() => caisse.lastTransaction)
 const trapRef = ref(null)
 
 useFocusTrap(trapRef)
+
+function openInspection() {
+  const query = { transactionId: tx.value.id }
+  if (tx.value.clientId) query.clientId = tx.value.clientId
+  if (tx.value.clientName) query.name = tx.value.clientName
+  caisse.closeReceipt()
+  router.push({ name: 'InspectionNew', query })
+}
 
 function formatPrice(fcfa) {
   return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA'

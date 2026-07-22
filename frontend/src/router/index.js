@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePortalStore } from '@/stores/portal'
 
 const routes = [
   {
@@ -72,6 +73,24 @@ const routes = [
         meta: { roles: ['MANAGER', 'PARTNER'] }
       },
       {
+        path: 'inspections',
+        name: 'Inspections',
+        component: () => import('@/views/InspectionsView.vue'),
+        meta: { roles: ['EMPLOYEE', 'MANAGER', 'PARTNER'] }
+      },
+      {
+        path: 'inspections/new',
+        name: 'InspectionNew',
+        component: () => import('@/views/InspectionCaptureView.vue'),
+        meta: { roles: ['EMPLOYEE', 'MANAGER'] }
+      },
+      {
+        path: 'inspections/:id',
+        name: 'InspectionDetail',
+        component: () => import('@/views/InspectionDetailView.vue'),
+        meta: { roles: ['EMPLOYEE', 'MANAGER', 'PARTNER'] }
+      },
+      {
         path: 'expenses',
         name: 'Expenses',
         component: () => import('@/views/ExpensesView.vue'),
@@ -91,6 +110,25 @@ const routes = [
       }
     ]
   },
+  // ── Client portal « Rapports de lavage » (accès sans compte staff) ──
+  {
+    path: '/rapports',
+    name: 'PortalLogin',
+    component: () => import('@/views/PortalLoginView.vue'),
+    meta: { public: true }
+  },
+  {
+    path: '/rapports/espace',
+    name: 'PortalHome',
+    component: () => import('@/views/PortalHomeView.vue'),
+    meta: { portal: true }
+  },
+  {
+    path: '/rapports/:id(\\d+)',
+    name: 'PortalReport',
+    component: () => import('@/views/PortalReportView.vue'),
+    meta: { portal: true }
+  },
   // Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
@@ -102,6 +140,13 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to) => {
+  // Client portal — separate auth space (phone + code)
+  if (to.meta.portal) {
+    const portal = usePortalStore()
+    if (!portal.isAuthenticated) return { name: 'PortalLogin' }
+    return true
+  }
+
   const auth = useAuthStore()
 
   if (to.meta.public) return true
