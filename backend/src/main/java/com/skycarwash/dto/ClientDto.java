@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ClientDto(
         Long id,
@@ -21,12 +22,18 @@ public record ClientDto(
         /** Subscription expiry date; required for BOUCLIER, optional for others. */
         LocalDate expiresAt,
 
+        /** Free-text CRM notes — optional. */
+        @Size(max = 5000) String notes,
+
+        /** Tags for segmentation — optional. */
+        List<String> tags,
+
         boolean active,
 
         LocalDateTime createdAt
 ) {
     /** Compact constructor for creation requests (no id / createdAt). */
     public ClientDto(String name, String phone, ClientType type, int balance, LocalDate expiresAt) {
-        this(null, name, phone, type, balance, expiresAt, true, null);
+        this(null, name, phone, type, balance, expiresAt, null, null, true, null);
     }
 }

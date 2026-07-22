@@ -72,6 +72,19 @@
         />
       </div>
 
+      <!-- Tags -->
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Tags</label>
+        <input v-model="form.tags" type="text" class="input-field" placeholder="flotte, fidèle, entreprise" />
+        <p class="text-xs text-slate-500 mt-1">Séparés par des virgules — pour filtrer et segmenter.</p>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Notes</label>
+        <textarea v-model="form.notes" rows="3" class="input-field" placeholder="Remarques internes sur le client..."></textarea>
+      </div>
+
       <!-- Error -->
       <p v-if="error" class="text-red-400 text-sm text-center">{{ error }}</p>
 
@@ -109,6 +122,8 @@ const form = ref({
   type:      'CARTE',
   balance:   0,
   expiresAt: '',
+  tags:      '',
+  notes:     '',
   active:    true
 })
 
@@ -125,6 +140,8 @@ onMounted(async () => {
         type:      c.type,
         balance:   c.balance,
         expiresAt: c.expiresAt ?? '',
+        tags:      (c.tags ?? []).join(', '),
+        notes:     c.notes ?? '',
         active:    c.active
       }
     }
@@ -147,6 +164,8 @@ async function submit() {
     type:      form.value.type,
     balance:   form.value.type === 'BOUCLIER' ? 0 : form.value.balance,
     expiresAt: form.value.expiresAt || null,
+    tags:      form.value.tags.split(',').map(t => t.trim()).filter(Boolean),
+    notes:     form.value.notes.trim() || null,
     active:    form.value.active
   }
 

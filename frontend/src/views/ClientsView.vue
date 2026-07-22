@@ -4,7 +4,17 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold">Clients</h2>
-      <RouterLink to="/clients/new" class="btn-primary py-2 px-4 text-sm">+ Nouveau</RouterLink>
+      <div class="flex items-center gap-2">
+        <button
+          @click="exportCsv"
+          :disabled="store.clients.length === 0"
+          class="btn-secondary py-2 px-3 text-sm disabled:opacity-40"
+          title="Exporter la liste filtrée en CSV"
+        >
+          ⭳ CSV
+        </button>
+        <RouterLink to="/clients/new" class="btn-primary py-2 px-4 text-sm">+ Nouveau</RouterLink>
+      </div>
     </div>
 
     <!-- Search -->
@@ -15,6 +25,39 @@
       class="input-field"
       @input="onSearch"
     />
+
+    <!-- Segmentation filters -->
+    <div class="grid grid-cols-3 gap-2">
+      <select v-model="filterType" @change="reload" class="input-field py-2 text-sm">
+        <option value="">Tous types</option>
+        <option value="CARTE">Carte</option>
+        <option value="BOUCLIER">Bouclier</option>
+        <option value="VIP">VIP</option>
+      </select>
+      <select v-model="filterStatus" @change="reload" class="input-field py-2 text-sm">
+        <option value="active">Actifs</option>
+        <option value="inactive">Inactifs</option>
+        <option value="all">Tous</option>
+      </select>
+      <select v-model="sortKey" @change="reload" class="input-field py-2 text-sm">
+        <option value="name">A → Z</option>
+        <option value="spent">Top dépenses</option>
+        <option value="visits">Plus de visites</option>
+        <option value="recent">Visite récente</option>
+        <option value="created">Récemment ajoutés</option>
+      </select>
+    </div>
+
+    <!-- Active tag filter chip -->
+    <div v-if="filterTag" class="flex items-center gap-2 text-xs">
+      <span class="text-slate-500">Tag :</span>
+      <button
+        @click="filterTag = ''; reload()"
+        class="px-2 py-1 rounded-full bg-brand-500/20 text-brand-400 flex items-center gap-1"
+      >
+        #{{ filterTag }} <span aria-hidden="true">✕</span>
+      </button>
+    </div>
 
     <!-- Loading skeleton -->
     <div v-if="store.loading" class="space-y-2">
@@ -39,35 +82,21 @@
       <p class="text-sm mt-1">{{ query ? 'Aucun résultat pour cette recherche' : 'Ajoutez votre premier client' }}</p>
     </div>
 
-    <!-- Client list + sort + pagination -->
+    <!-- Client list + pagination -->
     <div v-else class="space-y-3">
+      <p class="text-xs text-slate-500">{{ store.clients.length }} client{{ store.clients.length !== 1 ? 's' : '' }}</p>
 
-      <!-- Sort controls -->
-      <div class="flex items-center gap-2 text-xs">
-        <span class="text-slate-500">Trier :</span>
-        <button
-          v-for="col in SORT_COLS"
-          :key="col.key"
-          @click="toggleSort(col.key)"
-          class="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
-          :class="sortKey === col.key ? 'bg-brand-500/20 text-brand-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'"
-        >
-          {{ col.label }}
-          <span v-if="sortKey === col.key">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-        </button>
-      </div>
-
-      <!-- Rows -->
       <div class="space-y-2">
         <RouterLink
           v-for="client in paginatedClients"
           :key="client.id"
           :to="`/clients/${client.id}`"
           class="card block hover:bg-slate-700 active:scale-[0.99] transition-all duration-100"
+          :class="{ 'opacity-60': !client.active }"
         >
           <div class="flex items-center justify-between">
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <p class="font-semibold truncate">{{ client.name }}</p>
                 <span
                   class="text-xs px-2 py-0.5 rounded-full shrink-0"
@@ -77,22 +106,29 @@
                     'bg-amber-900 text-amber-300':   client.type === 'VIP'
                   }"
                 >{{ CLIENT_TYPE_LABELS[client.type] ?? client.type }}</span>
+                <span v-if="!client.active" class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Inactif</span>
               </div>
               <p class="text-sm text-slate-400 mt-0.5">{{ client.phone }}</p>
+
+              <!-- Tags -->
+              <div v-if="client.tags?.length" class="flex flex-wrap gap-1 mt-1.5">
+                <button
+                  v-for="t in client.tags"
+                  :key="t"
+                  @click.prevent="filterTag = t; reload()"
+                  class="text-[11px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600"
+                >#{{ t }}</button>
+              </div>
             </div>
 
             <div class="text-right shrink-0 ml-3">
-              <p
-                class="text-sm font-semibold"
-                :class="client.balance <= 1 ? 'text-red-400' : 'text-green-400'"
-              >
-                {{ client.balance }} passage{{ client.balance !== 1 ? 's' : '' }}
+              <p class="text-sm font-semibold text-green-400">{{ fmtFcfa(client.totalSpent) }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {{ client.visitCount }} visite{{ client.visitCount !== 1 ? 's' : '' }}
+                <span v-if="client.vehicleCount"> · {{ client.vehicleCount }} 🚗</span>
               </p>
-              <p v-if="client.expiresAt" class="text-xs mt-0.5" :class="expiryClass(client.expiresAt)">
-                exp. {{ formatDate(client.expiresAt) }}
-                <span v-if="expiryStatus(client.expiresAt)" class="font-semibold">
-                  · {{ expiryStatus(client.expiresAt) }}
-                </span>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {{ client.lastVisitAt ? 'vu ' + formatDate(client.lastVisitAt) : 'jamais venu' }}
               </p>
             </div>
           </div>
@@ -133,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
 
@@ -147,70 +183,81 @@ const store = useClientsStore()
 const query = ref('')
 let debounce
 
-// ── Pagination ───────────────────────────────────────────────────── //
+// ── Filters (server-driven) ──────────────────────────────────────── //
+const filterType   = ref('')
+const filterStatus = ref('active')
+const filterTag    = ref('')
+const sortKey      = ref('name')
+
+// ── Pagination (client-side over filtered result) ────────────────── //
 const PAGE_SIZE = 15
 const page      = ref(1)
 
-// ── Sorting ──────────────────────────────────────────────────────── //
-const SORT_COLS = [
-  { key: 'name',    label: 'Nom' },
-  { key: 'balance', label: 'Passages' }
-]
-const sortKey = ref('name')
-const sortDir = ref('asc')
-
-function toggleSort(key) {
-  if (sortKey.value === key) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortDir.value = 'asc'
-  }
-  page.value = 1
-}
-
-const sortedClients = computed(() => {
-  const list = [...store.clients]
-  list.sort((a, b) => {
-    let cmp = 0
-    if (sortKey.value === 'name')    cmp = a.name.localeCompare(b.name, 'fr')
-    if (sortKey.value === 'balance') cmp = a.balance - b.balance
-    return sortDir.value === 'asc' ? cmp : -cmp
-  })
-  return list
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(sortedClients.value.length / PAGE_SIZE)))
-
+const totalPages = computed(() => Math.max(1, Math.ceil(store.clients.length / PAGE_SIZE)))
 const paginatedClients = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
-  return sortedClients.value.slice(start, start + PAGE_SIZE)
+  return store.clients.slice(start, start + PAGE_SIZE)
 })
 
-onMounted(() => store.loadAll())
+// Clamp page if the list shrinks
+watch(() => store.clients.length, () => {
+  if (page.value > totalPages.value) page.value = totalPages.value
+})
+
+function reload() {
+  page.value = 1
+  store.loadAll({
+    q: query.value,
+    type: filterType.value,
+    status: filterStatus.value,
+    tag: filterTag.value,
+    sort: sortKey.value
+  })
+}
+
+onMounted(reload)
 
 function onSearch() {
   clearTimeout(debounce)
-  page.value = 1
-  debounce = setTimeout(() => store.loadAll(query.value), 300)
+  debounce = setTimeout(reload, 300)
+}
+
+// ── CSV export ───────────────────────────────────────────────────── //
+function exportCsv() {
+  const headers = ['Nom', 'Téléphone', 'Type', 'Solde', 'Visites', 'Total dépensé (FCFA)', 'Dernière visite', 'Véhicules', 'Tags', 'Statut']
+  const rows = store.clients.map(c => [
+    c.name,
+    c.phone,
+    CLIENT_TYPE_LABELS[c.type] ?? c.type,
+    c.balance,
+    c.visitCount,
+    c.totalSpent,
+    c.lastVisitAt ? formatDate(c.lastVisitAt) : '',
+    c.vehicleCount,
+    (c.tags ?? []).join(' '),
+    c.active ? 'Actif' : 'Inactif'
+  ])
+  const esc = (v) => {
+    const s = String(v ?? '')
+    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const csv = [headers, ...rows].map(r => r.map(esc).join(';')).join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `clients-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Formatting / alerts ──────────────────────────────────────────── //
+function fmtFcfa(n) {
+  return new Intl.NumberFormat('fr-FR').format(n ?? 0) + ' F'
 }
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function expiryClass(iso) {
-  const days = Math.ceil((new Date(iso) - Date.now()) / 86_400_000)
-  if (days <= 0) return 'text-red-400'
-  if (days <= 5) return 'text-amber-400'
-  return 'text-slate-400'
-}
-
-function expiryStatus(iso) {
-  const days = Math.ceil((new Date(iso) - Date.now()) / 86_400_000)
-  if (days <= 0) return 'Expiré'
-  if (days <= 5) return 'Bientôt'
-  return null
 }
 
 function needsAlert(client) {

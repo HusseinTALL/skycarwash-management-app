@@ -102,6 +102,93 @@
         {{ alertMessage(store.current) }}
       </div>
 
+      <!-- Stats (Client 360) -->
+      <div v-if="s" class="grid grid-cols-2 gap-2">
+        <div class="card py-3">
+          <p class="text-xs text-slate-400">Total dépensé</p>
+          <p class="text-lg font-bold text-green-400">{{ fmtFcfa(s.totalSpent) }}</p>
+        </div>
+        <div class="card py-3">
+          <p class="text-xs text-slate-400">Visites</p>
+          <p class="text-lg font-bold">{{ s.visitCount }}</p>
+        </div>
+        <div class="card py-3">
+          <p class="text-xs text-slate-400">Points fidélité</p>
+          <p class="text-lg font-bold text-brand-400">{{ s.loyaltyPoints }}</p>
+        </div>
+        <div class="card py-3">
+          <p class="text-xs text-slate-400">Dernière visite</p>
+          <p class="text-sm font-semibold mt-1">{{ s.lastVisitAt ? formatDate(s.lastVisitAt) : '—' }}</p>
+        </div>
+      </div>
+
+      <!-- Tags & notes -->
+      <div v-if="store.current.tags?.length || store.current.notes" class="card space-y-2">
+        <div v-if="store.current.tags?.length" class="flex flex-wrap gap-1.5">
+          <span v-for="t in store.current.tags" :key="t"
+                class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">#{{ t }}</span>
+        </div>
+        <p v-if="store.current.notes" class="text-sm text-slate-300 whitespace-pre-line">{{ store.current.notes }}</p>
+      </div>
+
+      <!-- Vehicles -->
+      <div class="card space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-semibold text-slate-300">Véhicules</h4>
+          <button @click="openVehicleForm()" class="text-brand-400 text-sm font-medium">+ Ajouter</button>
+        </div>
+        <p v-if="!s?.vehicles?.length && !vehicleForm" class="text-sm text-slate-500">Aucun véhicule enregistré.</p>
+        <ul v-if="s?.vehicles?.length" class="space-y-2">
+          <li v-for="v in s.vehicles" :key="v.id"
+              class="flex items-center justify-between bg-slate-900/40 rounded-lg px-3 py-2">
+            <div class="min-w-0">
+              <p class="text-sm font-medium truncate">
+                {{ VEHICLE_TYPE_ICONS[v.type] }} {{ v.label || VEHICLE_TYPE_LABELS[v.type] }}
+              </p>
+              <p v-if="v.plate" class="text-xs text-slate-400">{{ v.plate }}</p>
+            </div>
+            <div class="flex gap-3 shrink-0 ml-2">
+              <button @click="openVehicleForm(v)" class="text-slate-400 hover:text-slate-200 text-sm">Modifier</button>
+              <button @click="removeVehicle(v)" class="text-red-400 hover:text-red-300 text-sm">Suppr.</button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Vehicle add/edit form -->
+        <div v-if="vehicleForm" class="border-t border-slate-700 pt-3 space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <select v-model="vehicleForm.type" class="input-field py-2 text-sm">
+              <option v-for="(label, key) in VEHICLE_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+            </select>
+            <input v-model="vehicleForm.plate" class="input-field py-2 text-sm" placeholder="Plaque (option.)" />
+          </div>
+          <input v-model="vehicleForm.label" class="input-field py-2 text-sm" placeholder="Marque / modèle (option.)" />
+          <p v-if="vehicleError" class="text-red-400 text-sm">{{ vehicleError }}</p>
+          <div class="flex gap-2">
+            <button @click="saveVehicle" :disabled="vehicleSaving" class="btn-primary text-sm px-4 flex-1">
+              {{ vehicleSaving ? '...' : (vehicleForm.id ? 'Enregistrer' : 'Ajouter') }}
+            </button>
+            <button @click="vehicleForm = null" class="btn-secondary text-sm px-4">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wash history -->
+      <div class="card space-y-2">
+        <h4 class="font-semibold text-slate-300">Historique des lavages</h4>
+        <p v-if="!s?.history?.length" class="text-sm text-slate-500">Aucun lavage enregistré.</p>
+        <ul v-else class="divide-y divide-slate-700">
+          <li v-for="h in s.history" :key="h.id" class="flex items-center justify-between py-2">
+            <div class="min-w-0">
+              <p class="text-sm truncate" :class="{ 'line-through text-slate-500': h.cancelled }">{{ h.serviceName }}</p>
+              <p class="text-xs text-slate-500">{{ formatDateTime(h.createdAt) }} · {{ paymentLabel(h.paymentMethod) }}</p>
+            </div>
+            <p class="text-sm font-semibold shrink-0 ml-2"
+               :class="h.cancelled ? 'text-slate-500' : 'text-green-400'">{{ fmtFcfa(h.amount) }}</p>
+          </li>
+        </ul>
+      </div>
+
       <!-- Add passages (CARTE / VIP) -->
       <div v-if="store.current.type !== 'BOUCLIER'" class="card space-y-3">
         <h4 class="font-semibold text-slate-300">Recharger les passages</h4>
@@ -198,11 +285,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useClientsStore } from '@/stores/clients'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import QRCode from 'qrcode'
+import { PAYMENT_LABELS, VEHICLE_TYPE_LABELS, VEHICLE_TYPE_ICONS } from '@/constants'
 
 const CLIENT_TYPE_LABELS = {
   CARTE:    'Carte passages',
@@ -214,6 +302,8 @@ const route  = useRoute()
 const router = useRouter()
 const store  = useClientsStore()
 
+const s = computed(() => store.summary)
+
 const passagesToAdd      = ref(null)
 const recharging         = ref(false)
 const rechargeError      = ref('')
@@ -222,7 +312,68 @@ const showDeactivateModal = ref(false)
 const showQrModal        = ref(false)
 const qrDataUrl          = ref(null)
 
-onMounted(() => store.loadById(route.params.id))
+// ── Vehicles ─────────────────────────────────────────────────────── //
+const vehicleForm   = ref(null)
+const vehicleSaving = ref(false)
+const vehicleError  = ref('')
+
+function openVehicleForm(v = null) {
+  vehicleError.value = ''
+  vehicleForm.value = v
+    ? { id: v.id, type: v.type, plate: v.plate ?? '', label: v.label ?? '' }
+    : { id: null, type: 'VOITURE', plate: '', label: '' }
+}
+
+async function saveVehicle() {
+  if (vehicleSaving.value) return
+  vehicleError.value = ''
+  vehicleSaving.value = true
+  const payload = {
+    type: vehicleForm.value.type,
+    plate: vehicleForm.value.plate.trim() || null,
+    label: vehicleForm.value.label.trim() || null
+  }
+  try {
+    if (vehicleForm.value.id) {
+      await store.updateVehicle(route.params.id, vehicleForm.value.id, payload)
+    } else {
+      await store.addVehicle(route.params.id, payload)
+    }
+    vehicleForm.value = null
+  } catch (err) {
+    vehicleError.value = err.response?.data?.error ?? 'Erreur lors de l\'enregistrement du véhicule'
+  } finally {
+    vehicleSaving.value = false
+  }
+}
+
+async function removeVehicle(v) {
+  try {
+    await store.deleteVehicle(route.params.id, v.id)
+  } catch (err) {
+    vehicleError.value = err.response?.data?.error ?? 'Erreur lors de la suppression'
+  }
+}
+
+function paymentLabel(method) {
+  return PAYMENT_LABELS[method] ?? method
+}
+
+function fmtFcfa(n) {
+  return new Intl.NumberFormat('fr-FR').format(n ?? 0) + ' F'
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+  })
+}
+
+onMounted(() => {
+  store.loadById(route.params.id)
+  store.loadSummary(route.params.id)
+})
 
 function printCard() {
   window.print()

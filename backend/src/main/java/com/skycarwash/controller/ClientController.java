@@ -1,7 +1,12 @@
 package com.skycarwash.controller;
 
 import com.skycarwash.dto.ClientDto;
+import com.skycarwash.dto.ClientListItemDto;
+import com.skycarwash.dto.ClientSummaryDto;
+import com.skycarwash.dto.VehicleDto;
+import com.skycarwash.entity.Client;
 import com.skycarwash.service.ClientService;
+import com.skycarwash.service.VehicleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -17,14 +22,20 @@ import java.util.Map;
 public class ClientController {
 
     private final ClientService clientService;
+    private final VehicleService vehicleService;
 
-    /** List all active clients (optionally filter by ?q=). */
+    /**
+     * Segmentable, stats-enriched client list.
+     * Optional filters: q, type, status (active|inactive|all), tag, sort (name|recent|spent|visits|created).
+     */
     @GetMapping
-    public ResponseEntity<List<ClientDto>> getAll(@RequestParam(required = false) String q) {
-        if (q != null && q.length() >= 2) {
-            return ResponseEntity.ok(clientService.search(q));
-        }
-        return ResponseEntity.ok(clientService.findAll());
+    public ResponseEntity<List<ClientListItemDto>> getAll(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Client.ClientType type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String sort) {
+        return ResponseEntity.ok(clientService.findEnriched(q, type, status, tag, sort));
     }
 
     /** Search clients by name or phone — used by caisse ABONNEMENT picker. */
@@ -39,6 +50,12 @@ public class ClientController {
     @GetMapping("/{id}")
     public ResponseEntity<ClientDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(clientService.findById(id));
+    }
+
+    /** Full "Client 360" profile: identity + stats + vehicles + history. */
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<ClientSummaryDto> getSummary(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getSummary(id));
     }
 
     @PostMapping
@@ -63,6 +80,32 @@ public class ClientController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable Long id) {
         clientService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Vehicles (sub-resource) ──────────────────────────────────────── //
+
+    @GetMapping("/{id}/vehicles")
+    public ResponseEntity<List<VehicleDto>> listVehicles(@PathVariable Long id) {
+        return ResponseEntity.ok(vehicleService.findByClient(id));
+    }
+
+    @PostMapping("/{id}/vehicles")
+    public ResponseEntity<VehicleDto> addVehicle(
+            @PathVariable Long id, @Valid @RequestBody VehicleDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(vehicleService.add(id, dto));
+    }
+
+    @PutMapping("/{id}/vehicles/{vehicleId}")
+    public ResponseEntity<VehicleDto> updateVehicle(
+            @PathVariable Long id, @PathVariable Long vehicleId, @Valid @RequestBody VehicleDto dto) {
+        return ResponseEntity.ok(vehicleService.update(id, vehicleId, dto));
+    }
+
+    @DeleteMapping("/{id}/vehicles/{vehicleId}")
+    public ResponseEntity<Void> deleteVehicle(
+            @PathVariable Long id, @PathVariable Long vehicleId) {
+        vehicleService.delete(id, vehicleId);
         return ResponseEntity.noContent().build();
     }
 }
