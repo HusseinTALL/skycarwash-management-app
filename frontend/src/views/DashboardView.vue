@@ -1,409 +1,514 @@
 <template>
-  <div class="p-4 space-y-4 pb-6">
-
-    <!-- Stale cache banner (feature 8) -->
-    <div
-      v-if="(activeTab === 'daily' && dash.dailyCachedAt) || (activeTab === 'monthly' && dash.monthlyCachedAt)"
-      class="flex items-center gap-2 bg-amber-900/30 border border-amber-700/50 rounded-xl px-4 py-2 text-amber-300 text-xs"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      Données en cache ({{ formatCacheTime(activeTab === 'daily' ? dash.dailyCachedAt : dash.monthlyCachedAt) }}) — mode hors-ligne
-    </div>
-
-    <!-- Header + WS indicator -->
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-bold">Dashboard</h2>
-      <div class="flex items-center gap-2">
-        <span
-          v-if="dash.wsDataError"
-          class="text-xs text-amber-400 flex items-center gap-1"
-          title="Données temps réel malformées"
+  <div class="scw-animate-in">
+    <PageHeader title="Dashboard" icon="pi pi-chart-line" :subtitle="headerSubtitle">
+      <template #actions>
+        <Tag
+          :severity="dash.wsConnected ? 'success' : 'secondary'"
+          :value="dash.wsConnected ? 'En direct' : 'Hors-ligne'"
+          rounded
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          Données incorrectes
-        </span>
-        <div class="flex items-center gap-1.5 text-xs"
-             :class="dash.wsConnected ? 'text-green-400' : 'text-slate-500'">
-          <span class="w-2 h-2 rounded-full"
-                :class="dash.wsConnected ? 'bg-green-400 animate-pulse' : 'bg-slate-500'"/>
-          {{ dash.wsConnected ? 'En direct' : 'Hors-ligne' }}
-        </div>
-      </div>
-    </div>
+          <template #icon>
+            <span
+              class="w-1.5 h-1.5 rounded-full mr-1.5"
+              :class="dash.wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"
+            />
+          </template>
+        </Tag>
+        <SelectButton
+          v-model="activeTab"
+          :options="TABS"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          aria-label="Période"
+        />
+      </template>
+    </PageHeader>
 
-    <!-- Tab switcher -->
-    <div class="flex bg-slate-800 rounded-xl p-1 gap-1">
-      <button
-        v-for="tab in TABS" :key="tab.value"
-        @click="activeTab = tab.value"
-        class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors duration-150"
-        :class="activeTab === tab.value
-          ? 'bg-brand-500 text-white'
-          : 'text-slate-400 hover:text-slate-200'"
-      >{{ tab.label }}</button>
-    </div>
+    <!-- Stale cache / data-error banners -->
+    <Message
+      v-if="isCached"
+      severity="warn"
+      :closable="false"
+      icon="pi pi-clock"
+      class="mb-4"
+    >
+      Données en cache ({{ formatCacheTime(isCached) }}) — mode hors-ligne
+    </Message>
+    <Message v-if="dash.wsDataError" severity="error" :closable="false" class="mb-4">
+      Données temps réel incorrectes reçues
+    </Message>
 
-    <!-- ═══════════════ DAILY TAB ═══════════════ -->
+    <!-- ══════════════════ DAILY ══════════════════ -->
     <template v-if="activeTab === 'daily'">
-
-      <!-- Date picker -->
-      <input
-        v-model="selectedDate"
-        type="date"
-        class="input-field"
-        @change="dash.loadDaily(selectedDate)"
-      />
-
-      <!-- Loading -->
-      <div v-if="dash.loadingDaily" class="text-center py-10 text-slate-400 text-sm">
-        Chargement...
+      <div class="flex flex-wrap items-center gap-3 mb-5">
+        <DatePicker
+          v-model="dailyDate"
+          date-format="dd/mm/yy"
+          show-icon
+          icon-display="input"
+          :max-date="new Date()"
+          class="w-full sm:w-56"
+          @update:model-value="onDailyDateChange"
+        />
+        <Button
+          label="Clôture du jour"
+          icon="pi pi-print"
+          severity="secondary"
+          outlined
+          :disabled="!dash.daily"
+          @click="showClosingReport = true"
+        />
       </div>
 
-      <template v-else-if="dash.daily">
+      <!-- KPI cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        <KpiCard
+          title="Véhicules lavés"
+          :value="dash.daily?.vehiclesWashed ?? 0"
+          icon="pi pi-check-circle"
+          accent="#38bdf8"
+          :delta="dash.daily?.vehiclesDelta"
+          :delta-text="dash.formatDelta(dash.daily?.vehiclesDelta ?? 0)"
+          delta-label="vs sem. passée"
+          :loading="dash.loadingDaily"
+        />
+        <KpiCard
+          title="Recettes"
+          :value="dash.formatFcfa(dash.daily?.totalRevenue ?? 0)"
+          icon="pi pi-money-bill"
+          accent="#34d399"
+          :delta="dash.daily?.revenueDelta"
+          :delta-text="dash.formatFcfa(dash.daily?.revenueDelta ?? 0)"
+          delta-label="vs sem. passée"
+          :loading="dash.loadingDaily"
+        />
+        <KpiCard
+          title="Panier moyen"
+          :value="dash.formatFcfa(avgTicket)"
+          icon="pi pi-tag"
+          accent="#c084fc"
+          hint="Recettes / véhicule"
+          :loading="dash.loadingDaily"
+        />
+        <KpiCard
+          title="Annulations"
+          :value="dash.daily?.cancelledCount ?? 0"
+          icon="pi pi-times-circle"
+          accent="#f87171"
+          :hint="dash.daily?.cancelledCount ? dash.formatFcfa(dash.daily.cancelledAmount) : 'Aucune'"
+          :loading="dash.loadingDaily"
+        />
+      </div>
 
-        <!-- KPI cards -->
-        <div class="grid grid-cols-2 gap-3">
-          <!-- Vehicles -->
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Véhicules</p>
-            <p class="text-3xl font-bold mt-1">{{ dash.daily.vehiclesWashed }}</p>
-            <p class="text-xs mt-1" :class="deltaClass(dash.daily.vehiclesDelta)">
-              {{ dash.formatDelta(dash.daily.vehiclesDelta) }} vs sem. passée
-            </p>
+      <div class="grid gap-4 lg:grid-cols-5">
+        <!-- Payment method doughnut -->
+        <Card class="lg:col-span-2">
+          <template #title><span class="text-base font-semibold">Par mode de paiement</span></template>
+          <template #content>
+            <div v-if="dash.loadingDaily" class="grid place-items-center h-64">
+              <Skeleton shape="circle" size="10rem" />
+            </div>
+            <div v-else-if="methodChart" class="h-64">
+              <Chart type="doughnut" :data="methodChart" :options="doughnutOptions()" class="h-full" />
+            </div>
+            <EmptyState v-else icon="pi pi-wallet" text="Aucune transaction" />
+          </template>
+        </Card>
+
+        <!-- Revenue by service bar -->
+        <Card class="lg:col-span-3">
+          <template #title><span class="text-base font-semibold">Recettes par service</span></template>
+          <template #content>
+            <div v-if="dash.loadingDaily" class="h-64 flex flex-col gap-3 justify-center">
+              <Skeleton v-for="i in 5" :key="i" height="1.6rem" />
+            </div>
+            <div v-else-if="serviceChart" class="h-64">
+              <Chart type="bar" :data="serviceChart" :options="barOptions({ horizontal: true })" class="h-full" />
+            </div>
+            <EmptyState v-else icon="pi pi-chart-bar" text="Aucune transaction" />
+          </template>
+        </Card>
+      </div>
+
+      <!-- Recent activity -->
+      <Card class="mt-4">
+        <template #title>
+          <div class="flex items-center justify-between">
+            <span class="text-base font-semibold">Activité récente</span>
+            <RouterLink to="/transactions" class="text-xs text-primary hover:underline">Tout voir</RouterLink>
           </div>
+        </template>
+        <template #content>
+          <DataTable
+            :value="dash.daily?.recentTransactions ?? []"
+            :loading="dash.loadingDaily"
+            data-key="id"
+            size="small"
+            :pt="{ table: { style: 'min-width: 30rem' } }"
+          >
+            <template #empty>
+              <EmptyState icon="pi pi-inbox" text="Aucune activité aujourd'hui" />
+            </template>
+            <Column header="Service">
+              <template #body="{ data }">
+                <span :class="data.cancelledAt ? 'line-through text-slate-500' : 'font-medium text-slate-200'">
+                  {{ data.serviceName }}
+                </span>
+              </template>
+            </Column>
+            <Column header="Heure">
+              <template #body="{ data }">
+                <span class="text-slate-400 text-sm">{{ formatTime(data.createdAt) }}</span>
+              </template>
+            </Column>
+            <Column header="Paiement" style="width: 10rem">
+              <template #body="{ data }">
+                <Tag
+                  :severity="data.cancelledAt ? 'danger' : methodSeverity(data.paymentMethod)"
+                  :value="data.cancelledAt ? 'Annulée' : (METHOD_LABELS[data.paymentMethod] ?? data.paymentMethod)"
+                  rounded
+                />
+              </template>
+            </Column>
+          </DataTable>
+        </template>
+      </Card>
+    </template>
 
-          <!-- Revenue -->
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Recettes</p>
-            <p class="text-2xl font-bold mt-1 text-brand-400">
-              {{ dash.formatFcfa(dash.daily.totalRevenue) }}
-            </p>
-            <p class="text-xs mt-1" :class="deltaClass(dash.daily.revenueDelta)">
-              {{ dash.formatDelta(dash.daily.revenueDelta) }} vs sem. passée
-            </p>
+    <!-- ══════════════════ MONTHLY ══════════════════ -->
+    <template v-else>
+      <div class="mb-5">
+        <DatePicker
+          v-model="monthlyDate"
+          view="month"
+          date-format="mm/yy"
+          show-icon
+          icon-display="input"
+          :max-date="new Date()"
+          class="w-full sm:w-56"
+          @update:model-value="onMonthlyDateChange"
+        />
+      </div>
+
+      <!-- KPI cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        <KpiCard
+          title="Recettes du mois"
+          :value="dash.formatFcfa(dash.monthly?.totalRevenue ?? 0)"
+          icon="pi pi-money-bill"
+          accent="#34d399"
+          :loading="dash.loadingMonthly"
+        />
+        <KpiCard
+          title="Lavages"
+          :value="dash.monthly?.totalVehicles ?? 0"
+          icon="pi pi-check-circle"
+          accent="#38bdf8"
+          :loading="dash.loadingMonthly"
+        />
+        <KpiCard
+          title="Profit estimé"
+          :value="dash.formatFcfa(dash.monthly?.estimatedProfit ?? 0)"
+          icon="pi pi-chart-line"
+          accent="#c084fc"
+          hint="≈ 40% de marge"
+          :loading="dash.loadingMonthly"
+        />
+        <KpiCard
+          title="Clients actifs"
+          :value="dash.monthly?.activeClients ?? 0"
+          icon="pi pi-users"
+          accent="#fbbf24"
+          :hint="dash.monthly?.expiringIn7Days ? `${dash.monthly.expiringIn7Days} expirent bientôt` : 'Abonnements en cours'"
+          :loading="dash.loadingMonthly"
+        />
+      </div>
+
+      <!-- Expenses banner widget -->
+      <div class="scw-panel px-4 py-3.5 mb-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="grid place-items-center h-10 w-10 rounded-xl bg-red-500/10 text-red-400">
+            <i class="pi pi-arrow-down" />
+          </span>
+          <div>
+            <p class="scw-eyebrow">Dépenses du mois</p>
+            <Skeleton v-if="loadingExpenses" width="7rem" height="1.5rem" class="mt-1" />
+            <p v-else class="text-xl font-bold text-red-400 mt-0.5">{{ dash.formatFcfa(monthlyExpenseTotal) }}</p>
           </div>
         </div>
+        <RouterLink to="/expenses">
+          <Button label="Détail" icon="pi pi-arrow-right" icon-pos="right" text size="small" />
+        </RouterLink>
+      </div>
 
-        <!-- Breakdown cards side-by-side on wide screens -->
-        <div class="grid gap-4 lg:grid-cols-2 items-start">
-
-        <!-- Revenue by payment method -->
-        <div class="card space-y-3">
-          <h3 class="text-sm font-semibold text-slate-300">Par mode de paiement</h3>
-          <div
-            v-for="[method, amount] in dash.revenueByMethodEntries"
-            :key="method"
-            class="space-y-1"
-          >
-            <div class="flex justify-between text-xs">
-              <span class="text-slate-400">{{ METHOD_LABELS[method] ?? method }}</span>
-              <span class="font-medium">{{ dash.formatFcfa(amount) }}</span>
+      <div class="grid gap-4 lg:grid-cols-3">
+        <!-- Revenue trend -->
+        <Card class="lg:col-span-2">
+          <template #title><span class="text-base font-semibold">Tendance des recettes</span></template>
+          <template #subtitle><span class="text-xs text-slate-500">30 derniers jours</span></template>
+          <template #content>
+            <div v-if="dash.loadingMonthly" class="h-72"><Skeleton height="100%" /></div>
+            <div v-else-if="revenueTrend" class="h-72">
+              <Chart type="line" :data="revenueTrend" :options="lineOptions()" class="h-full" />
             </div>
-            <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all duration-500"
-                :class="METHOD_COLORS[method] ?? 'bg-brand-500'"
-                :style="{ width: pct(amount, dash.daily.totalRevenue) + '%' }"
-              />
+            <EmptyState v-else icon="pi pi-chart-line" text="Pas de données" />
+          </template>
+        </Card>
+
+        <!-- Weekly activity -->
+        <Card>
+          <template #title><span class="text-base font-semibold">Activité hebdo</span></template>
+          <template #subtitle><span class="text-xs text-slate-500">7 derniers jours</span></template>
+          <template #content>
+            <div v-if="dash.loadingMonthly" class="h-72"><Skeleton height="100%" /></div>
+            <div v-else-if="weeklyActivity" class="h-72">
+              <Chart type="line" :data="weeklyActivity" :options="lineOptions()" class="h-full" />
+            </div>
+            <EmptyState v-else icon="pi pi-calendar" text="Pas de données" />
+          </template>
+        </Card>
+      </div>
+
+      <!-- Top services -->
+      <Card class="mt-4">
+        <template #title><span class="text-base font-semibold">Top services</span></template>
+        <template #content>
+          <div v-if="dash.loadingMonthly" class="space-y-4">
+            <Skeleton v-for="i in 4" :key="i" height="2rem" />
+          </div>
+          <div v-else-if="dash.monthly?.topServices?.length" class="space-y-4">
+            <div v-for="(svc, i) in dash.monthly.topServices" :key="svc.name" class="flex items-center gap-4">
+              <span
+                class="grid place-items-center h-8 w-8 rounded-lg text-sm font-bold shrink-0"
+                :style="{ background: rankBg(i), color: rankColor(i) }"
+              >{{ i + 1 }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-baseline gap-3 mb-1.5">
+                  <span class="truncate font-medium text-slate-200">{{ svc.name }}</span>
+                  <span class="text-primary font-semibold shrink-0 text-sm">{{ dash.formatFcfa(svc.revenue) }}</span>
+                </div>
+                <ProgressBar
+                  :value="topServicePct(svc.revenue)"
+                  :show-value="false"
+                  style="height: 6px"
+                />
+                <p class="text-xs text-slate-500 mt-1">{{ svc.count }} lavage{{ svc.count > 1 ? 's' : '' }}</p>
+              </div>
             </div>
           </div>
-          <p v-if="!dash.revenueByMethodEntries.length" class="text-slate-500 text-sm text-center py-2">
-            Aucune transaction
-          </p>
-        </div>
+          <EmptyState v-else icon="pi pi-star" text="Pas encore de services" />
+        </template>
+      </Card>
+    </template>
 
-        <!-- Revenue by service -->
-        <div class="card space-y-2">
-          <h3 class="text-sm font-semibold text-slate-300">Par service</h3>
-          <div
-            v-for="[service, amount] in dash.revenueByServiceEntries"
-            :key="service"
-            class="flex justify-between text-sm"
-          >
-            <span class="text-slate-300 truncate">{{ service }}</span>
-            <span class="font-semibold text-brand-400 shrink-0 ml-3">
-              {{ dash.formatFcfa(amount) }}
+    <!-- ══════════════════ CLOSING REPORT DIALOG ══════════════════ -->
+    <Dialog
+      v-model:visible="showClosingReport"
+      modal
+      :header="`Clôture du ${dash.daily ? formatDateFr(dash.daily.date) : ''}`"
+      class="w-full max-w-md mx-3"
+      :dismissable-mask="true"
+    >
+      <div id="closing-report-content" v-if="dash.daily" class="space-y-4 text-sm">
+        <div class="text-center space-y-0.5">
+          <p class="text-lg font-bold">SkyCarWash</p>
+          <p class="text-slate-400 text-xs">Clôture de caisse — {{ formatDateFr(dash.daily.date) }}</p>
+        </div>
+        <hr class="border-slate-700" />
+        <div class="space-y-2">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Véhicules lavés</span>
+            <span class="font-bold">{{ dash.daily.vehiclesWashed }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Transactions annulées</span>
+            <span :class="dash.daily.cancelledCount > 0 ? 'text-red-400 font-medium' : 'font-bold'">
+              {{ dash.daily.cancelledCount }}
+              <span v-if="dash.daily.cancelledCount > 0" class="text-xs">({{ dash.formatFcfa(dash.daily.cancelledAmount) }})</span>
             </span>
           </div>
-          <p v-if="!dash.revenueByServiceEntries.length" class="text-slate-500 text-sm text-center py-2">
-            Aucune transaction
-          </p>
         </div>
-
+        <hr class="border-slate-700" />
+        <div class="space-y-2">
+          <p class="font-semibold text-slate-300">Recettes par mode de paiement</p>
+          <div v-for="[method, amount] in dash.revenueByMethodEntries" :key="method" class="flex justify-between">
+            <span class="text-slate-400">{{ METHOD_LABELS[method] ?? method }}</span>
+            <span class="font-semibold">{{ dash.formatFcfa(amount) }}</span>
+          </div>
+          <p v-if="!dash.revenueByMethodEntries.length" class="text-slate-500 text-center">Aucune transaction</p>
         </div>
-
-        <!-- Recent transactions -->
-        <div v-if="dash.daily.recentTransactions?.length" class="card space-y-2">
-          <h3 class="text-sm font-semibold text-slate-300">Activité récente</h3>
-          <div
-            v-for="tx in dash.daily.recentTransactions"
-            :key="tx.id"
-            class="flex items-center justify-between text-sm py-1 border-b border-slate-700/50 last:border-0"
-          >
-            <div>
-              <span
-                class="font-medium"
-                :class="tx.cancelledAt ? 'line-through text-slate-500' : ''"
-              >{{ tx.serviceName }}</span>
-              <span class="text-slate-500 text-xs ml-2">{{ formatTime(tx.createdAt) }}</span>
-            </div>
-            <span
-              class="text-xs px-2 py-0.5 rounded-full"
-              :class="tx.cancelledAt
-                ? 'bg-red-900/50 text-red-300'
-                : METHOD_BADGE[tx.paymentMethod]"
-            >{{ tx.cancelledAt ? 'Annulée' : METHOD_LABELS[tx.paymentMethod] }}</span>
+        <hr class="border-slate-700" />
+        <div class="space-y-2">
+          <p class="font-semibold text-slate-300">Recettes par service</p>
+          <div v-for="[service, amount] in dash.revenueByServiceEntries" :key="service" class="flex justify-between">
+            <span class="text-slate-400 truncate">{{ service }}</span>
+            <span class="font-semibold shrink-0 ml-3">{{ dash.formatFcfa(amount) }}</span>
           </div>
         </div>
-
-        <!-- Closing report button (feature 5) -->
-        <button
-          @click="showClosingReport = true"
-          class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          Imprimer la clôture du jour
-        </button>
-
-      </template>
-    </template>
-
-    <!-- ═══════════════ MONTHLY TAB ═══════════════ -->
-    <template v-if="activeTab === 'monthly'">
-
-      <!-- Month picker -->
-      <input
-        v-model="selectedMonth"
-        type="month"
-        class="input-field"
-        @change="dash.loadMonthly(selectedMonth)"
-      />
-
-      <div v-if="dash.loadingMonthly" class="text-center py-10 text-slate-400 text-sm">
-        Chargement...
+        <hr class="border-slate-700" />
+        <div class="flex justify-between text-base font-bold">
+          <span>TOTAL NET</span>
+          <span class="text-primary">{{ dash.formatFcfa(dash.daily.totalRevenue) }}</span>
+        </div>
+        <p class="text-xs text-slate-500 text-center pt-2">Imprimé le {{ new Date().toLocaleString('fr-FR') }}</p>
       </div>
 
-      <template v-else-if="dash.monthly">
-
-        <!-- KPI cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Recettes</p>
-            <p class="text-2xl font-bold mt-1 text-brand-400">
-              {{ dash.formatFcfa(dash.monthly.totalRevenue) }}
-            </p>
-          </div>
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Lavages</p>
-            <p class="text-3xl font-bold mt-1">{{ dash.monthly.totalVehicles }}</p>
-          </div>
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Profit estimé</p>
-            <p class="text-2xl font-bold mt-1 text-green-400">
-              {{ dash.formatFcfa(dash.monthly.estimatedProfit) }}
-            </p>
-            <p class="text-xs text-slate-500 mt-0.5">≈40% marge</p>
-          </div>
-          <div class="card">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Clients actifs</p>
-            <p class="text-3xl font-bold mt-1">{{ dash.monthly.activeClients }}</p>
-            <p v-if="dash.monthly.expiringIn7Days > 0"
-               class="text-xs text-amber-400 mt-0.5">
-              {{ dash.monthly.expiringIn7Days }} expirent bientôt
-            </p>
-          </div>
-
-          <!-- Expenses card (feature 9) -->
-          <div class="card col-span-2 lg:col-span-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs text-slate-400 uppercase tracking-wide">Dépenses du mois</p>
-                <p v-if="loadingExpenses" class="text-slate-500 text-sm mt-1">Chargement...</p>
-                <p v-else class="text-2xl font-bold mt-1 text-red-400">
-                  {{ dash.formatFcfa(monthlyExpenseTotal) }}
-                </p>
-              </div>
-              <RouterLink to="/expenses" class="text-xs text-sky-400 underline">Voir détail</RouterLink>
-            </div>
-          </div>
-        </div>
-
-        <!-- 30-day revenue curve -->
-        <div class="card">
-          <h3 class="text-sm font-semibold text-slate-300 mb-3">Courbe de recettes</h3>
-          <RevenueChart :points="dash.monthly.dailyCurve" />
-        </div>
-
-        <!-- Top services -->
-        <div v-if="dash.monthly.topServices?.length" class="card space-y-3">
-          <h3 class="text-sm font-semibold text-slate-300">Top services</h3>
-          <div
-            v-for="(svc, i) in dash.monthly.topServices"
-            :key="svc.name"
-            class="flex items-center gap-3"
-          >
-            <span class="text-slate-500 font-bold text-sm w-5 text-center">{{ i + 1 }}</span>
-            <div class="flex-1 min-w-0">
-              <div class="flex justify-between text-sm">
-                <span class="truncate font-medium">{{ svc.name }}</span>
-                <span class="text-brand-400 font-semibold shrink-0 ml-2">
-                  {{ dash.formatFcfa(svc.revenue) }}
-                </span>
-              </div>
-              <p class="text-xs text-slate-500 mt-0.5">{{ svc.count }} lavage{{ svc.count > 1 ? 's' : '' }}</p>
-            </div>
-          </div>
-        </div>
-
+      <template #footer>
+        <Button label="Fermer" severity="secondary" text @click="showClosingReport = false" />
+        <Button label="Imprimer" icon="pi pi-print" @click="doPrint" />
       </template>
-    </template>
-
+    </Dialog>
   </div>
-
-  <!-- ═══════════════ CLOSING REPORT MODAL (feature 5) ═══════════════ -->
-  <Teleport to="body">
-    <div
-      v-if="showClosingReport && dash.daily"
-      class="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 print:hidden"
-      @click.self="showClosingReport = false"
-    >
-      <div class="bg-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <!-- Modal header (screen only) -->
-        <div class="flex items-center justify-between p-4 border-b border-slate-700 print:hidden">
-          <h3 class="font-semibold">Clôture du {{ formatDateFr(dash.daily.date) }}</h3>
-          <div class="flex gap-2">
-            <button
-              @click="doPrint"
-              class="btn-primary text-sm py-1.5 px-4"
-            >Imprimer</button>
-            <button @click="showClosingReport = false" class="btn-secondary text-sm py-1.5 px-3">✕</button>
-          </div>
-        </div>
-
-        <!-- Report content -->
-        <div id="closing-report-content" class="p-5 space-y-4 text-sm">
-          <div class="text-center space-y-0.5">
-            <p class="text-lg font-bold">SkyCarWash</p>
-            <p class="text-slate-400 text-xs">Clôture de caisse — {{ formatDateFr(dash.daily.date) }}</p>
-          </div>
-
-          <hr class="border-slate-700" />
-
-          <!-- Summary -->
-          <div class="space-y-2">
-            <div class="flex justify-between">
-              <span class="text-slate-400">Véhicules lavés</span>
-              <span class="font-bold">{{ dash.daily.vehiclesWashed }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">Transactions annulées</span>
-              <span :class="dash.daily.cancelledCount > 0 ? 'text-red-400 font-medium' : 'font-bold'">
-                {{ dash.daily.cancelledCount }}
-                <span v-if="dash.daily.cancelledCount > 0" class="text-xs">({{ dash.formatFcfa(dash.daily.cancelledAmount) }})</span>
-              </span>
-            </div>
-          </div>
-
-          <hr class="border-slate-700" />
-
-          <!-- By payment method -->
-          <div class="space-y-2">
-            <p class="font-semibold text-slate-300">Recettes par mode de paiement</p>
-            <div
-              v-for="[method, amount] in dash.revenueByMethodEntries"
-              :key="method"
-              class="flex justify-between"
-            >
-              <span class="text-slate-400">{{ METHOD_LABELS[method] ?? method }}</span>
-              <span class="font-semibold">{{ dash.formatFcfa(amount) }}</span>
-            </div>
-            <p v-if="!dash.revenueByMethodEntries.length" class="text-slate-500 text-center">Aucune transaction</p>
-          </div>
-
-          <hr class="border-slate-700" />
-
-          <!-- By service -->
-          <div class="space-y-2">
-            <p class="font-semibold text-slate-300">Recettes par service</p>
-            <div
-              v-for="[service, amount] in dash.revenueByServiceEntries"
-              :key="service"
-              class="flex justify-between"
-            >
-              <span class="text-slate-400 truncate">{{ service }}</span>
-              <span class="font-semibold shrink-0 ml-3">{{ dash.formatFcfa(amount) }}</span>
-            </div>
-          </div>
-
-          <hr class="border-slate-700" />
-
-          <!-- Total -->
-          <div class="flex justify-between text-base font-bold">
-            <span>TOTAL NET</span>
-            <span class="text-brand-400">{{ dash.formatFcfa(dash.daily.totalRevenue) }}</span>
-          </div>
-
-          <p class="text-xs text-slate-500 text-center pt-2">
-            Imprimé le {{ new Date().toLocaleString('fr-FR') }}
-          </p>
-        </div>
-      </div>
-    </div>
-  </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
-import RevenueChart from '@/components/RevenueChart.vue'
+import { useChartTheme, METHOD_COLORS, CHART_PALETTE } from '@/composables/useChartTheme'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import KpiCard from '@/components/ui/KpiCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import api from '@/api/axios'
 
+import Card from 'primevue/card'
+import Chart from 'primevue/chart'
+import Tag from 'primevue/tag'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+import Skeleton from 'primevue/skeleton'
+import SelectButton from 'primevue/selectbutton'
+import DatePicker from 'primevue/datepicker'
+import ProgressBar from 'primevue/progressbar'
+import Dialog from 'primevue/dialog'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+
 const dash = useDashboardStore()
+const { lineOptions, barOptions, doughnutOptions } = useChartTheme()
 
 const TABS = [
-  { value: 'daily',   label: "Aujourd'hui" },
-  { value: 'monthly', label: 'Ce mois'     }
+  { value: 'daily', label: "Aujourd'hui" },
+  { value: 'monthly', label: 'Ce mois' }
 ]
 
 const METHOD_LABELS = {
-  CASH:       'Espèces',
-  ORANGE:     'Orange Money',
-  MOOV:       'Moov Money',
+  CASH: 'Espèces',
+  ORANGE: 'Orange Money',
+  MOOV: 'Moov Money',
   ABONNEMENT: 'Abonnement'
 }
+const METHOD_SEVERITY = {
+  CASH: 'success',
+  ORANGE: 'warn',
+  MOOV: 'info',
+  ABONNEMENT: 'help'
+}
+const methodSeverity = (m) => METHOD_SEVERITY[m] ?? 'secondary'
 
-const METHOD_COLORS = {
-  CASH:       'bg-green-500',
-  ORANGE:     'bg-orange-500',
-  MOOV:       'bg-blue-500',
-  ABONNEMENT: 'bg-purple-500'
+const activeTab = ref('daily')
+const dailyDate = ref(parseISODate(dash.selectedDate))
+const monthlyDate = ref(parseISOMonth(dash.selectedMonth))
+const showClosingReport = ref(false)
+
+const headerSubtitle = computed(() =>
+  activeTab.value === 'daily' ? "Vue d'ensemble du jour" : "Performance mensuelle"
+)
+const isCached = computed(() =>
+  activeTab.value === 'daily' ? dash.dailyCachedAt : dash.monthlyCachedAt
+)
+const avgTicket = computed(() => {
+  const n = dash.daily?.vehiclesWashed
+  if (!n) return 0
+  return Math.round((dash.daily.totalRevenue ?? 0) / n)
+})
+
+// ── Charts ─────────────────────────────────────────────────────────────── //
+const methodChart = computed(() => {
+  const entries = dash.revenueByMethodEntries
+  if (!entries.length) return null
+  return {
+    labels: entries.map(([m]) => METHOD_LABELS[m] ?? m),
+    datasets: [{
+      data: entries.map(([, v]) => v),
+      backgroundColor: entries.map(([m]) => METHOD_COLORS[m] ?? CHART_PALETTE.slate),
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  }
+})
+
+const serviceChart = computed(() => {
+  const entries = dash.revenueByServiceEntries.slice(0, 6)
+  if (!entries.length) return null
+  return {
+    labels: entries.map(([s]) => s),
+    datasets: [{
+      data: entries.map(([, v]) => v),
+      backgroundColor: CHART_PALETTE.primarySoft,
+      hoverBackgroundColor: 'rgba(56, 189, 248, 0.32)',
+      borderColor: CHART_PALETTE.primary,
+      borderWidth: 1.5,
+      borderRadius: 6,
+      barThickness: 18
+    }]
+  }
+})
+
+const revenueTrend = computed(() => {
+  const points = dash.monthly?.dailyCurve
+  if (!points?.length) return null
+  return {
+    labels: points.map((p) => p.date.split('-')[2]),
+    datasets: [{
+      data: points.map((p) => p.revenue),
+      borderColor: CHART_PALETTE.primary,
+      backgroundColor: CHART_PALETTE.primarySoft,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      tension: 0.35,
+      fill: true
+    }]
+  }
+})
+
+const weeklyActivity = computed(() => {
+  const points = dash.monthly?.dailyCurve?.slice(-7)
+  if (!points?.length) return null
+  const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+  return {
+    labels: points.map((p) => days[new Date(p.date).getDay()]),
+    datasets: [{
+      data: points.map((p) => p.revenue),
+      borderColor: CHART_PALETTE.green,
+      backgroundColor: 'rgba(52, 211, 153, 0.14)',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: CHART_PALETTE.green,
+      tension: 0.4,
+      fill: true
+    }]
+  }
+})
+
+const maxTopService = computed(() =>
+  Math.max(1, ...(dash.monthly?.topServices ?? []).map((s) => s.revenue))
+)
+const topServicePct = (rev) => Math.round((rev / maxTopService.value) * 100)
+
+function rankBg(i) {
+  const c = [CHART_PALETTE.amber, '#cbd5e1', '#f59e0b'][i] || CHART_PALETTE.primary
+  return `color-mix(in srgb, ${c}, transparent 84%)`
+}
+function rankColor(i) {
+  return [CHART_PALETTE.amber, '#cbd5e1', '#f59e0b'][i] || CHART_PALETTE.primary
 }
 
-const METHOD_BADGE = {
-  CASH:       'bg-green-900/50 text-green-300',
-  ORANGE:     'bg-orange-900/50 text-orange-300',
-  MOOV:       'bg-blue-900/50 text-blue-300',
-  ABONNEMENT: 'bg-purple-900/50 text-purple-300'
-}
-
-const activeTab          = ref('daily')
-const selectedDate       = ref(dash.selectedDate)
-const selectedMonth      = ref(dash.selectedMonth)
-const showClosingReport  = ref(false)
-
-// ── Expenses (feature 9 - monthly widget) ─── //
+// ── Monthly expenses widget ────────────────────────────────────────────── //
 const monthlyExpenseTotal = ref(0)
-const loadingExpenses     = ref(false)
+const loadingExpenses = ref(false)
 
 async function loadMonthlyExpenses(month) {
   loadingExpenses.value = true
@@ -417,8 +522,20 @@ async function loadMonthlyExpenses(month) {
   }
 }
 
+// ── Date handling ──────────────────────────────────────────────────────── //
+function onDailyDateChange(val) {
+  if (!val) return
+  dash.loadDaily(toISODate(val))
+}
+function onMonthlyDateChange(val) {
+  if (!val) return
+  const month = toISOMonth(val)
+  dash.loadMonthly(month)
+  loadMonthlyExpenses(month)
+}
+
 watch(activeTab, (tab) => {
-  if (tab === 'monthly') loadMonthlyExpenses(selectedMonth.value)
+  if (tab === 'monthly') loadMonthlyExpenses(toISOMonth(monthlyDate.value))
 })
 
 onMounted(() => {
@@ -426,37 +543,44 @@ onMounted(() => {
   dash.loadMonthly()
   dash.connectWebSocket()
 })
-
 onUnmounted(() => {
   dash.disconnectWebSocket()
 })
 
-function pct(value, total) {
-  if (!total) return 0
-  return Math.round((value / total) * 100)
-}
-
-function deltaClass(delta) {
-  if (delta > 0) return 'text-green-400'
-  if (delta < 0) return 'text-red-400'
-  return 'text-slate-500'
-}
-
+// ── Formatters / helpers ───────────────────────────────────────────────── //
 function formatTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
-
 function formatDateFr(iso) {
   return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
-
 function formatCacheTime(iso) {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
-
 function doPrint() {
   window.print()
 }
-</script>
 
+function parseISODate(str) {
+  if (!str) return new Date()
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+function parseISOMonth(str) {
+  if (!str) return new Date()
+  const [y, m] = str.split('-').map(Number)
+  return new Date(y, m - 1, 1)
+}
+function toISODate(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+function toISOMonth(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+</script>

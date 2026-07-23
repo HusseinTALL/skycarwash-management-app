@@ -1,7 +1,17 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+
+import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
+import ConfirmationService from 'primevue/confirmationservice'
+import Tooltip from 'primevue/tooltip'
+import Ripple from 'primevue/ripple'
+
 import App from './App.vue'
 import router from './router'
+import SkyPreset from './theme/preset'
+
+import 'primeicons/primeicons.css'
 import './assets/main.css'
 
 // ── Environment validation ─────────────────────────────────────────────────
@@ -14,11 +24,35 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   )
 }
 
+// Force dark colour scheme (the app is designed dark-first).
+document.documentElement.classList.add('app-dark')
+
 // ── Vue app setup ──────────────────────────────────────────────────────────
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+
+app.use(PrimeVue, {
+  ripple: true,
+  theme: {
+    preset: SkyPreset,
+    options: {
+      darkModeSelector: '.app-dark',
+      cssLayer: {
+        name: 'primevue',
+        // Tailwind utilities live in a later layer so they can override
+        // PrimeVue component styles when we need a bespoke tweak.
+        order: 'tailwind-base, primevue, tailwind-utilities'
+      }
+    }
+  }
+})
+
+app.use(ToastService)
+app.use(ConfirmationService)
+app.directive('tooltip', Tooltip)
+app.directive('ripple', Ripple)
 
 // ── Global error handler ───────────────────────────────────────────────────
 // Catches unhandled Vue component errors. Wire Sentry (or similar) here.

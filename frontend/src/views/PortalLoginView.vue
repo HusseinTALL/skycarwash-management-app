@@ -1,35 +1,34 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-8">
-    <div class="w-full max-w-sm">
+  <div class="min-h-screen grid place-items-center px-4 py-10">
+    <div class="w-full max-w-sm scw-animate-in">
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-500 mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div class="inline-grid place-items-center w-16 h-16 rounded-2xl bg-primary text-slate-950 mb-4 shadow-xl shadow-primary/25">
+          <i class="pi pi-shield text-3xl" />
         </div>
-        <h1 class="text-2xl font-bold text-white">Rapports de lavage</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-100">Rapports de lavage</h1>
         <p class="text-slate-400 text-sm mt-1">Consultez l'état de vos véhicules</p>
       </div>
 
-      <form @submit.prevent="submit" class="card space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Numéro de téléphone</label>
-          <input v-model="phone" type="tel" autocomplete="tel" placeholder="70 12 34 56" class="input-field" :disabled="loading" required />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Code d'accès</label>
-          <input v-model="code" inputmode="numeric" placeholder="••••" class="input-field tracking-widest" :disabled="loading" required />
-          <p class="text-xs text-slate-500 mt-1">Par défaut : les 4 derniers chiffres de votre numéro.</p>
-        </div>
+      <div class="scw-panel p-6 sm:p-7">
+        <form class="space-y-5" @submit.prevent="submit">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1.5">Numéro de téléphone</label>
+            <IconField>
+              <InputIcon class="pi pi-phone" />
+              <InputText v-model="phone" type="tel" autocomplete="tel" placeholder="70 12 34 56" class="w-full" :disabled="loading" :invalid="!!errorMsg" />
+            </IconField>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1.5">Code d'accès</label>
+            <InputText v-model="code" inputmode="numeric" placeholder="••••" class="w-full tracking-[0.4em]" :disabled="loading" :invalid="!!errorMsg" />
+            <p class="text-xs text-slate-500 mt-1.5">Par défaut : les 4 derniers chiffres de votre numéro.</p>
+          </div>
 
-        <p v-if="errorMsg" class="text-red-400 text-sm text-center">{{ errorMsg }}</p>
+          <Message v-if="errorMsg" severity="error" :closable="false" size="small">{{ errorMsg }}</Message>
 
-        <button type="submit" class="btn-primary w-full" :disabled="loading">
-          <span v-if="loading">Connexion…</span>
-          <span v-else>Se connecter</span>
-        </button>
-      </form>
+          <Button type="submit" label="Se connecter" icon="pi pi-sign-in" class="w-full" :loading="loading" />
+        </form>
+      </div>
 
       <p class="text-center text-xs text-slate-600 mt-6">SkyCarWash · Espace client</p>
     </div>
@@ -40,6 +39,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePortalStore } from '@/stores/portal'
+
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 
 const router = useRouter()
 const portal = usePortalStore()

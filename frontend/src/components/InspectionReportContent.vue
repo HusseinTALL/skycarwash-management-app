@@ -2,13 +2,10 @@
   <div class="space-y-6">
 
     <!-- ── Résumé commande / véhicule ─────────────────────────── -->
-    <section class="card space-y-3">
-      <div class="flex items-center justify-between">
+    <section class="scw-panel p-5 space-y-3">
+      <div class="flex items-center justify-between gap-2">
         <h2 class="font-semibold text-slate-200">{{ vehicleLabel }}</h2>
-        <span class="text-xs px-2 py-0.5 rounded-full"
-              :class="report.status === 'COMPLETED' ? 'bg-green-900/50 text-green-300' : 'bg-brand-900/50 text-brand-300'">
-          {{ statusLabel }}
-        </span>
+        <Tag :severity="report.status === 'COMPLETED' ? 'success' : 'info'" :value="statusLabel" rounded />
       </div>
       <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         <div v-if="report.transactionId"><dt class="text-slate-500 text-xs">N° commande</dt><dd class="font-mono">#{{ report.transactionId }}</dd></div>
@@ -24,7 +21,7 @@
     </section>
 
     <!-- ── Comparateur avant / après ──────────────────────────── -->
-    <section v-if="comparePairs.length" class="card space-y-3">
+    <section v-if="comparePairs.length" class="scw-panel p-5 space-y-3">
       <h2 class="font-semibold text-slate-200">Comparaison avant / après</h2>
       <BeforeAfterSlider
         :key="activePair"
@@ -48,7 +45,7 @@
     <PhotoGallery v-if="afterPhotos.length" title="Photos après lavage" :photos="afterPhotos" :variant="variant" />
 
     <!-- ── Dommages ───────────────────────────────────────────── -->
-    <section v-if="report.damages?.length" class="card space-y-3">
+    <section v-if="report.damages?.length" class="scw-panel p-5 space-y-3">
       <h2 class="font-semibold text-slate-200">Dommages constatés avant lavage</h2>
       <div v-for="d in report.damages" :key="d.id" class="flex gap-3 items-start border-b border-slate-700 last:border-0 pb-3 last:pb-0">
         <AuthedImage v-if="d.photoId" :photo-id="d.photoId" :variant="variant" wrapper-class="w-16 h-16 rounded-lg shrink-0" />
@@ -60,7 +57,7 @@
     </section>
 
     <!-- ── Objets retrouvés ───────────────────────────────────── -->
-    <section v-if="report.foundItems?.length" class="card space-y-3">
+    <section v-if="report.foundItems?.length" class="scw-panel p-5 space-y-3">
       <h2 class="font-semibold text-slate-200">Objets retrouvés dans le véhicule</h2>
       <div v-for="it in report.foundItems" :key="it.id" class="flex gap-3 items-start border-b border-slate-700 last:border-0 pb-3 last:pb-0">
         <AuthedImage v-if="it.photoId" :photo-id="it.photoId" :variant="variant" wrapper-class="w-16 h-16 rounded-lg shrink-0" />
@@ -73,13 +70,13 @@
     </section>
 
     <!-- ── Remarques ──────────────────────────────────────────── -->
-    <section v-if="report.remarks" class="card space-y-2">
+    <section v-if="report.remarks" class="scw-panel p-5 space-y-2">
       <h2 class="font-semibold text-slate-200">Remarques</h2>
       <p class="text-sm text-slate-400 whitespace-pre-line">{{ report.remarks }}</p>
     </section>
 
     <!-- ── Signature du client ────────────────────────────────── -->
-    <section v-if="report.signed" class="card space-y-2">
+    <section v-if="report.signed" class="scw-panel p-5 space-y-2">
       <h2 class="font-semibold text-slate-200">Signature du client</h2>
       <AuthedImage :path="signaturePath" :variant="variant" fit="contain" wrapper-class="h-28 bg-white rounded-xl" />
       <p class="text-xs text-green-400">
@@ -94,6 +91,7 @@ import { computed, ref } from 'vue'
 import AuthedImage from '@/components/AuthedImage.vue'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
+import Tag from 'primevue/tag'
 import { PHOTO_ZONE_LABELS, VEHICLE_TYPE_LABELS, INSPECTION_STATUS_LABELS, PAYMENT_LABELS } from '@/constants'
 
 const props = defineProps({
