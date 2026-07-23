@@ -15,7 +15,7 @@
         </div>
         <div class="sm:col-span-2 lg:col-span-1">
           <label class="block text-xs text-slate-400 mb-1.5">Paiement</label>
-          <Select v-model="method" :options="METHOD_OPTS" option-label="label" option-value="value" class="w-full" @change="resetAndLoad" />
+          <Select v-model="method" :options="METHOD_OPTS" option-label="label" option-value="value" placeholder="Tous" class="w-full" @change="resetAndLoad" />
         </div>
         <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" outlined class="w-full" @click="resetFilters" />
       </div>

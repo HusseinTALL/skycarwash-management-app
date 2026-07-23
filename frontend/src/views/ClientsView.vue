@@ -21,7 +21,7 @@
           <InputIcon class="pi pi-search" />
           <InputText v-model="query" placeholder="Nom ou téléphone…" class="w-full" @input="onSearch" />
         </IconField>
-        <Select v-model="filterType" :options="typeOptions" option-label="label" option-value="value" class="w-full" @change="reload" />
+        <Select v-model="filterType" :options="typeOptions" option-label="label" option-value="value" placeholder="Tous types" class="w-full" @change="reload" />
         <Select v-model="filterStatus" :options="statusOptions" option-label="label" option-value="value" class="w-full" @change="reload" />
         <Select v-model="sortKey" :options="sortOptions" option-label="label" option-value="value" class="w-full" @change="reload" />
       </div>
