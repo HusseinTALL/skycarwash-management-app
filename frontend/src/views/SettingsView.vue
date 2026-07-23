@@ -1,6 +1,8 @@
 <template>
-  <div class="p-4 space-y-6 pb-24">
+  <div class="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
     <h2 class="text-xl font-bold">Réglages</h2>
+
+    <div class="grid lg:grid-cols-2 gap-6 items-start">
 
     <!-- ── Services ────────────────────────────────────────────────── -->
     <div class="card space-y-4">
@@ -201,6 +203,8 @@
         </button>
       </div>
       </template>
+    </div>
+
     </div>
 
     <p v-if="actionError" class="text-red-400 text-sm text-center">{{ actionError }}</p>

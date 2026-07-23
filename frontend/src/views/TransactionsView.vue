@@ -74,6 +74,7 @@
 
     <!-- Transaction list -->
     <div v-else class="space-y-2">
+      <div class="grid gap-2 md:grid-cols-2">
       <div
         v-for="tx in transactions"
         :key="tx.id"
@@ -114,6 +115,7 @@
         <p v-if="tx.cancelledAt && tx.cancelReason" class="text-xs text-red-400 border-t border-slate-700 pt-1.5">
           Motif : {{ tx.cancelReason }}
         </p>
+      </div>
       </div>
 
       <!-- Pagination -->

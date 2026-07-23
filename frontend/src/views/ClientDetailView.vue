@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 space-y-4 pb-6">
+  <div class="p-4 space-y-4 pb-6 max-w-4xl mx-auto">
 
     <!-- Header -->
     <div class="flex items-center justify-between">
@@ -131,6 +131,9 @@
         <p v-if="store.current.notes" class="text-sm text-slate-300 whitespace-pre-line">{{ store.current.notes }}</p>
       </div>
 
+      <!-- Vehicles + wash history side-by-side on desktop -->
+      <div class="grid lg:grid-cols-2 gap-4 items-start">
+
       <!-- Vehicles -->
       <div class="card space-y-3">
         <div class="flex items-center justify-between">
@@ -187,6 +190,8 @@
                :class="h.cancelled ? 'text-slate-500' : 'text-green-400'">{{ fmtFcfa(h.amount) }}</p>
           </li>
         </ul>
+      </div>
+
       </div>
 
       <!-- Add passages (CARTE / VIP) -->
