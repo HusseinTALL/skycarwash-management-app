@@ -115,5 +115,9 @@ function logout() {
   router.replace('/rapports')
 }
 
+function formatDateTime(iso) {
+  return iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : ''
+}
+
 onMounted(load)
 </script>
