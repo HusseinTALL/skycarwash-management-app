@@ -30,7 +30,7 @@ docker compose version   # should print v2.x
 mkdir -p /opt && cd /opt
 git clone https://github.com/HusseinTALL/skycarwash-management-app.git
 cd skycarwash-management-app
-git checkout claude/project-assessment-kr2hmk
+git checkout main
 ```
 
 > Private repo? Use a deploy key or a personal access token in the clone URL:
