@@ -12,7 +12,7 @@
 set -euo pipefail
 
 COMPOSE_FILE="docker-compose.prod.yml"
-BRANCH="${DEPLOY_BRANCH:-claude/project-assessment-kr2hmk}"
+BRANCH="${DEPLOY_BRANCH:-main}"
 
 cd "$(dirname "$0")"
 
