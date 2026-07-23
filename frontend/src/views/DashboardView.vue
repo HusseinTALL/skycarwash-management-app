@@ -90,6 +90,9 @@
           </div>
         </div>
 
+        <!-- Breakdown cards side-by-side on wide screens -->
+        <div class="grid gap-4 lg:grid-cols-2 items-start">
+
         <!-- Revenue by payment method -->
         <div class="card space-y-3">
           <h3 class="text-sm font-semibold text-slate-300">Par mode de paiement</h3>
@@ -131,6 +134,8 @@
           <p v-if="!dash.revenueByServiceEntries.length" class="text-slate-500 text-sm text-center py-2">
             Aucune transaction
           </p>
+        </div>
+
         </div>
 
         <!-- Recent transactions -->
@@ -190,7 +195,7 @@
       <template v-else-if="dash.monthly">
 
         <!-- KPI cards -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="card">
             <p class="text-xs text-slate-400 uppercase tracking-wide">Recettes</p>
             <p class="text-2xl font-bold mt-1 text-brand-400">
@@ -218,7 +223,7 @@
           </div>
 
           <!-- Expenses card (feature 9) -->
-          <div class="card col-span-2">
+          <div class="card col-span-2 lg:col-span-4">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-xs text-slate-400 uppercase tracking-wide">Dépenses du mois</p>

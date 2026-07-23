@@ -1,5 +1,5 @@
 <template>
-  <nav class="fixed bottom-0 inset-x-0 bg-slate-800 border-t border-slate-700 flex justify-around items-center h-16 z-10 safe-area-bottom">
+  <nav class="fixed bottom-0 inset-x-0 bg-slate-800 border-t border-slate-700 flex items-stretch h-16 z-10 safe-area-bottom overflow-x-auto no-scrollbar">
 
     <!-- Caisse – employee + manager -->
     <RouterLink
@@ -141,10 +141,25 @@ if (auth.isManager && stock.products.length === 0) {
 
 <style scoped>
 .nav-item {
-  @apply flex flex-col items-center justify-center text-slate-400 hover:text-slate-200
-         transition-colors duration-150 min-h-0 min-w-0 px-2 py-1 rounded-lg;
+  @apply flex flex-1 flex-col items-center justify-center gap-0.5 text-slate-400 hover:text-slate-200
+         transition-colors duration-150 min-h-0 px-1 py-1 rounded-lg;
+  /* Even distribution when everything fits; a comfortable floor + horizontal
+     scroll when a manager's 7 items would otherwise be crushed on a phone. */
+  min-width: 3.5rem;
+}
+.nav-item span {
+  @apply text-[11px] leading-none whitespace-nowrap;
 }
 .nav-item-active {
   @apply text-brand-400;
+}
+
+/* Hide the scrollbar on the overflow-x nav strip while keeping it scrollable */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 </style>

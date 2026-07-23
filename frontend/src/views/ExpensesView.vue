@@ -80,6 +80,7 @@
 
     <!-- Expense list -->
     <div v-else class="space-y-2">
+      <div class="grid gap-2 md:grid-cols-2">
       <div
         v-for="exp in expenses"
         :key="exp.id"
@@ -105,6 +106,7 @@
             aria-label="Supprimer"
           >✕</button>
         </div>
+      </div>
       </div>
 
       <!-- Monthly total -->

@@ -27,7 +27,7 @@
     />
 
     <!-- Segmentation filters -->
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <select v-model="filterType" @change="reload" class="input-field py-2 text-sm">
         <option value="">Tous types</option>
         <option value="CARTE">Carte</option>
@@ -86,7 +86,7 @@
     <div v-else class="space-y-3">
       <p class="text-xs text-slate-500">{{ store.clients.length }} client{{ store.clients.length !== 1 ? 's' : '' }}</p>
 
-      <div class="space-y-2">
+      <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         <RouterLink
           v-for="client in paginatedClients"
           :key="client.id"

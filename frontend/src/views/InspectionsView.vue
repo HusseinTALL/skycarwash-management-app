@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 space-y-4 pb-6 max-w-2xl mx-auto">
+  <div class="p-4 space-y-4 pb-6 max-w-4xl mx-auto">
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-lg font-bold text-white">Rapports d'état</h1>
@@ -14,7 +14,7 @@
       Aucun rapport pour le moment.
     </div>
 
-    <div v-else class="space-y-3">
+    <div v-else class="grid gap-3 sm:grid-cols-2">
       <RouterLink
         v-for="r in store.recent"
         :key="r.id"

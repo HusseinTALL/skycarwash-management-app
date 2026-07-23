@@ -67,6 +67,7 @@
         </button>
       </div>
 
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <div
         v-for="product in paginatedProducts"
         :key="product.id"
@@ -131,6 +132,7 @@
             >{{ stockLevelLabel(product) }}</span>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- Stock pagination -->

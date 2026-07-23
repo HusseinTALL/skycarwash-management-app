@@ -117,7 +117,7 @@
 
     <!-- ── Main content ───────────────────────────────────────────────── -->
     <main class="flex-1 md:ml-56 overflow-y-auto pb-20 md:pb-0">
-      <div class="max-w-4xl mx-auto">
+      <div class="max-w-6xl mx-auto w-full">
         <RouterView />
       </div>
     </main>
