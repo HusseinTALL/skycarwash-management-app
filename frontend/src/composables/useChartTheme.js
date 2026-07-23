@@ -81,6 +81,19 @@ export function useChartTheme() {
 
   /** Options for a horizontal/vertical bar chart. */
   function barOptions({ currency = true, horizontal = false } = {}) {
+    const valueAxis = {
+      type: 'linear',
+      beginAtZero: true,
+      grid: { color: GRID },
+      border: { display: false },
+      ticks: { color: TICK, font: { family: FONT, size: 10 }, callback: currency ? (v) => compact(v) : undefined }
+    }
+    const categoryAxis = {
+      type: 'category',
+      grid: { display: false },
+      border: { display: false },
+      ticks: { color: TICK, font: { family: FONT, size: 10 } }
+    }
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -92,19 +105,7 @@ export function useChartTheme() {
           callbacks: currency ? { label: (ctx) => fcfa(ctx.raw) } : {}
         }
       },
-      scales: {
-        x: {
-          grid: { display: !horizontal, color: GRID, drawBorder: false },
-          border: { display: false },
-          ticks: { color: TICK, font: { family: FONT, size: 10 }, callback: horizontal && currency ? (v) => compact(v) : undefined }
-        },
-        y: {
-          grid: { display: horizontal, color: GRID, drawBorder: false },
-          border: { display: false },
-          ticks: { color: TICK, font: { family: FONT, size: 10 }, callback: !horizontal && currency ? (v) => compact(v) : undefined },
-          beginAtZero: true
-        }
-      }
+      scales: horizontal ? { x: valueAxis, y: categoryAxis } : { x: categoryAxis, y: valueAxis }
     }
   }
 

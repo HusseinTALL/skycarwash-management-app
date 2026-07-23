@@ -1,6 +1,6 @@
 <template>
   <div class="scw-animate-in">
-    <PageHeader title="Dépenses" icon="pi pi-arrow-down-right" subtitle="Suivi des charges mensuelles">
+    <PageHeader title="Dépenses" icon="pi pi-arrow-down" subtitle="Suivi des charges mensuelles">
       <template #actions>
         <DatePicker v-model="monthDate" view="month" date-format="mm/yy" show-icon icon-display="input" class="w-44" @update:model-value="load" />
         <Button label="Dépense" icon="pi pi-plus" @click="openForm" />

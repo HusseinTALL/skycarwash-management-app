@@ -62,11 +62,11 @@
       </div>
 
       <!-- KPI cards -->
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
         <KpiCard
           title="Véhicules lavés"
           :value="dash.daily?.vehiclesWashed ?? 0"
-          icon="pi pi-car"
+          icon="pi pi-check-circle"
           accent="#38bdf8"
           :delta="dash.daily?.vehiclesDelta"
           :delta-text="dash.formatDelta(dash.daily?.vehiclesDelta ?? 0)"
@@ -192,7 +192,7 @@
       </div>
 
       <!-- KPI cards -->
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-5">
         <KpiCard
           title="Recettes du mois"
           :value="dash.formatFcfa(dash.monthly?.totalRevenue ?? 0)"
@@ -203,7 +203,7 @@
         <KpiCard
           title="Lavages"
           :value="dash.monthly?.totalVehicles ?? 0"
-          icon="pi pi-car"
+          icon="pi pi-check-circle"
           accent="#38bdf8"
           :loading="dash.loadingMonthly"
         />
@@ -229,7 +229,7 @@
       <div class="scw-panel px-4 py-3.5 mb-4 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <span class="grid place-items-center h-10 w-10 rounded-xl bg-red-500/10 text-red-400">
-            <i class="pi pi-arrow-down-right" />
+            <i class="pi pi-arrow-down" />
           </span>
           <div>
             <p class="scw-eyebrow">Dépenses du mois</p>
@@ -297,7 +297,7 @@
               </div>
             </div>
           </div>
-          <EmptyState v-else icon="pi pi-trophy" text="Pas encore de services" />
+          <EmptyState v-else icon="pi pi-star" text="Pas encore de services" />
         </template>
       </Card>
     </template>

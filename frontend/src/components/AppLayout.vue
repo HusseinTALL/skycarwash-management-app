@@ -8,7 +8,7 @@
     >
       <div class="flex items-center gap-2.5 px-5 h-16 border-b border-slate-800/80">
         <span class="grid place-items-center h-9 w-9 rounded-xl bg-primary text-slate-950 shadow-lg shadow-primary/20">
-          <i class="pi pi-car text-lg" />
+          <i class="pi pi-sun text-lg" />
         </span>
         <div class="leading-tight">
           <p class="font-bold tracking-tight text-slate-100">SkyCarWash</p>
@@ -68,7 +68,7 @@
       <div class="flex items-center gap-2">
         <Button icon="pi pi-bars" text rounded aria-label="Menu" @click="drawerOpen = true" />
         <span class="flex items-center gap-2 font-bold tracking-tight text-slate-100">
-          <i class="pi pi-car text-primary" /> SkyCarWash
+          <i class="pi pi-sun text-primary" /> SkyCarWash
         </span>
       </div>
       <Avatar :label="userInitials" shape="circle" class="!bg-primary/15 !text-primary !text-xs !font-semibold" />
@@ -79,7 +79,7 @@
       <template #header>
         <div class="flex items-center gap-2.5">
           <span class="grid place-items-center h-9 w-9 rounded-xl bg-primary text-slate-950">
-            <i class="pi pi-car text-lg" />
+            <i class="pi pi-sun text-lg" />
           </span>
           <div class="leading-tight">
             <p class="font-bold tracking-tight text-slate-100">SkyCarWash</p>

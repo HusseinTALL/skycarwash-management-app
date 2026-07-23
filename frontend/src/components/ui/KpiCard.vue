@@ -5,7 +5,7 @@
         <p class="scw-eyebrow">{{ title }}</p>
 
         <Skeleton v-if="loading" width="6rem" height="2rem" class="mt-2" />
-        <p v-else class="mt-1.5 text-2xl sm:text-[26px] font-bold tracking-tight text-slate-100 truncate">
+        <p v-else class="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight text-slate-100 leading-tight tabular-nums">
           {{ value }}
         </p>
 
@@ -55,8 +55,8 @@ const deltaColor = computed(() => {
   return '#94a3b8'
 })
 const deltaIcon = computed(() => {
-  if (props.delta > 0) return 'pi pi-arrow-up-right'
-  if (props.delta < 0) return 'pi pi-arrow-down-right'
+  if (props.delta > 0) return 'pi pi-arrow-up'
+  if (props.delta < 0) return 'pi pi-arrow-down'
   return 'pi pi-minus'
 })
 </script>

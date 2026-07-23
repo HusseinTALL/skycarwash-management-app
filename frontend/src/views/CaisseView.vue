@@ -10,7 +10,7 @@
       Hors-ligne — les transactions seront synchronisées à la reconnexion.
       <strong v-if="caisse.pendingCount > 0"> ({{ caisse.pendingCount }} en attente)</strong>
     </Message>
-    <Message v-if="caisse.syncing" severity="info" :closable="false" icon="pi pi-sync" class="mb-4">
+    <Message v-if="caisse.syncing" severity="info" :closable="false" icon="pi pi-refresh" class="mb-4">
       Synchronisation en cours…
     </Message>
 

@@ -1,6 +1,6 @@
 <template>
   <div class="scw-animate-in">
-    <PageHeader title="Historique" icon="pi pi-history" subtitle="Transactions encaissées" />
+    <PageHeader title="Historique" icon="pi pi-clock" subtitle="Transactions encaissées" />
 
     <!-- Filters -->
     <div class="scw-panel p-3 sm:p-4 mb-4">
@@ -43,7 +43,7 @@
       @page="onPage"
     >
       <template #empty>
-        <EmptyState icon="pi pi-receipt" text="Aucune transaction" hint="Modifiez les filtres pour voir d'autres résultats" />
+        <EmptyState icon="pi pi-credit-card" text="Aucune transaction" hint="Modifiez les filtres pour voir d'autres résultats" />
       </template>
 
       <Column header="Service" style="min-width: 14rem">

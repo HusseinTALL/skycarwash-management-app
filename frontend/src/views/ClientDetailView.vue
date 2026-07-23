@@ -75,7 +75,7 @@
               <h4 class="font-semibold text-slate-200">Véhicules</h4>
               <Button label="Ajouter" icon="pi pi-plus" size="small" text @click="openVehicleForm()" />
             </div>
-            <EmptyState v-if="!s?.vehicles?.length" icon="pi pi-car" text="Aucun véhicule enregistré" />
+            <EmptyState v-if="!s?.vehicles?.length" icon="pi pi-sun" text="Aucun véhicule enregistré" />
             <ul v-else class="space-y-2">
               <li v-for="v in s.vehicles" :key="v.id" class="flex items-center justify-between bg-slate-900/50 rounded-xl px-3 py-2.5">
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -130,7 +130,7 @@
 
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-2">
-            <Button label="Carte QR client" icon="pi pi-qrcode" severity="secondary" outlined class="flex-1" @click="openQrCard" />
+            <Button label="Carte QR client" icon="pi pi-id-card" severity="secondary" outlined class="flex-1" @click="openQrCard" />
             <Button v-if="store.current.active" label="Désactiver ce client" icon="pi pi-ban" severity="danger" outlined class="flex-1" @click="confirmDeactivate" />
           </div>
         </div>

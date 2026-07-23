@@ -4,7 +4,7 @@
       <!-- Brand -->
       <div class="text-center mb-8">
         <div class="inline-grid place-items-center w-16 h-16 rounded-2xl bg-primary text-slate-950 mb-4 shadow-xl shadow-primary/25">
-          <i class="pi pi-car text-3xl" />
+          <i class="pi pi-sun text-3xl" />
         </div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-100">SkyCarWash</h1>
         <p class="text-slate-400 text-sm mt-1">Connexion à votre espace</p>

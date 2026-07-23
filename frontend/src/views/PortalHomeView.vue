@@ -2,7 +2,7 @@
   <div class="min-h-screen">
     <header class="sticky top-0 z-10 h-14 flex items-center justify-between px-4 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
       <div class="flex items-center gap-2">
-        <span class="grid place-items-center h-8 w-8 rounded-lg bg-primary text-slate-950"><i class="pi pi-car" /></span>
+        <span class="grid place-items-center h-8 w-8 rounded-lg bg-primary text-slate-950"><i class="pi pi-sun" /></span>
         <div class="leading-tight">
           <h1 class="font-bold text-slate-100 text-sm">Mes rapports de lavage</h1>
           <p class="text-[11px] text-slate-500">{{ portal.phone }}</p>

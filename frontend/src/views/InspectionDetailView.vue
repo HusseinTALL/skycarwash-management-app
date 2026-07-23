@@ -14,7 +14,7 @@
             <p class="text-sm text-slate-500">Rapport #{{ report.id }}</p>
           </div>
         </div>
-        <Button label="Accès client" icon="pi pi-qrcode" severity="secondary" outlined @click="showQr = true" />
+        <Button label="Accès client" icon="pi pi-id-card" severity="secondary" outlined @click="showQr = true" />
       </div>
 
       <InspectionReportContent :report="report" variant="staff" />

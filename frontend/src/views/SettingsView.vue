@@ -101,7 +101,7 @@
         <TabPanel value="about">
           <div class="scw-panel p-8 text-center space-y-2 max-w-md mx-auto">
             <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-primary text-slate-950 mb-2">
-              <i class="pi pi-car text-2xl" />
+              <i class="pi pi-sun text-2xl" />
             </span>
             <p class="text-slate-100 font-semibold text-lg">SkyCarWash Manager</p>
             <p class="text-slate-500 text-sm">Version 1.0.0 — Mars 2026</p>

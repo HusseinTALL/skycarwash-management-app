@@ -18,11 +18,11 @@ export function useNavigation() {
       { label: 'Caisse',       to: '/caisse',       icon: 'pi pi-wallet',       roles: ['EMPLOYEE', 'MANAGER'] },
       { label: 'Dashboard',    to: '/dashboard',    icon: 'pi pi-chart-line',   roles: ['MANAGER', 'PARTNER'] },
       { label: 'Rapports',     to: '/inspections',  icon: 'pi pi-camera',       roles: ['EMPLOYEE', 'MANAGER', 'PARTNER'] },
-      { label: 'Historique',   to: '/transactions', icon: 'pi pi-history',      roles: ['MANAGER', 'PARTNER'] },
+      { label: 'Historique',   to: '/transactions', icon: 'pi pi-clock',      roles: ['MANAGER', 'PARTNER'] },
       { label: 'Clients',      to: '/clients',      icon: 'pi pi-users',        roles: ['MANAGER'] },
-      { label: 'Stock',        to: '/stock',        icon: 'pi pi-box',          roles: ['MANAGER'],
+      { label: 'Stock',        to: '/stock',        icon: 'pi pi-inbox',          roles: ['MANAGER'],
         badge: () => (stock.lowStockCount > 0 ? stock.lowStockCount : null) },
-      { label: 'Dépenses',     to: '/expenses',     icon: 'pi pi-arrow-down-right', roles: ['MANAGER'] },
+      { label: 'Dépenses',     to: '/expenses',     icon: 'pi pi-arrow-down', roles: ['MANAGER'] },
       { label: 'Réglages',     to: '/settings',     icon: 'pi pi-cog',          roles: ['MANAGER'] }
     ]
 

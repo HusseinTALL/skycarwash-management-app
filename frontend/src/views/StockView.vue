@@ -1,6 +1,6 @@
 <template>
   <div class="scw-animate-in">
-    <PageHeader title="Stock" icon="pi pi-box" subtitle="Produits & consommables">
+    <PageHeader title="Stock" icon="pi pi-inbox" subtitle="Produits & consommables">
       <template #actions>
         <Button label="Produit" icon="pi pi-plus" @click="openProductForm(null)" />
       </template>
@@ -24,7 +24,7 @@
       :pt="{ table: { style: 'min-width: 46rem' } }"
     >
       <template #empty>
-        <EmptyState icon="pi pi-box" text="Aucun produit" hint="Ajoutez vos produits et définissez les seuils d'alerte">
+        <EmptyState icon="pi pi-inbox" text="Aucun produit" hint="Ajoutez vos produits et définissez les seuils d'alerte">
           <template #action>
             <Button label="Nouveau produit" icon="pi pi-plus" @click="openProductForm(null)" />
           </template>
