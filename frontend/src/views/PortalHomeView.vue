@@ -1,59 +1,64 @@
 <template>
-  <div class="min-h-screen bg-slate-900">
-    <!-- Top bar -->
-    <header class="sticky top-0 z-10 bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
-      <div>
-        <h1 class="font-bold text-white">Mes rapports de lavage</h1>
-        <p class="text-xs text-slate-400">{{ portal.phone }}</p>
+  <div class="min-h-screen">
+    <header class="sticky top-0 z-10 h-14 flex items-center justify-between px-4 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+      <div class="flex items-center gap-2">
+        <span class="grid place-items-center h-8 w-8 rounded-lg bg-primary text-slate-950"><i class="pi pi-car" /></span>
+        <div class="leading-tight">
+          <h1 class="font-bold text-slate-100 text-sm">Mes rapports de lavage</h1>
+          <p class="text-[11px] text-slate-500">{{ portal.phone }}</p>
+        </div>
       </div>
-      <button @click="logout" class="text-sm text-slate-400 hover:text-slate-200">Déconnexion</button>
+      <Button label="Déconnexion" icon="pi pi-sign-out" text size="small" @click="logout" />
     </header>
 
-    <div class="p-4 space-y-4 max-w-2xl mx-auto pb-10">
-      <!-- Changer le code (par défaut) -->
-      <section v-if="portal.mustChangeCode || showChangeCode" class="card space-y-3 border border-amber-700/50">
-        <h2 class="font-semibold text-amber-300">Sécurisez votre espace</h2>
+    <div class="p-4 space-y-4 max-w-2xl mx-auto pb-10 scw-animate-in">
+      <!-- Change access code -->
+      <div v-if="portal.mustChangeCode || showChangeCode" class="scw-panel p-5 space-y-3 border-amber-700/40">
+        <div class="flex items-center gap-2 text-amber-300">
+          <i class="pi pi-shield" />
+          <h2 class="font-semibold">Sécurisez votre espace</h2>
+        </div>
         <p class="text-xs text-slate-400">Choisissez un nouveau code d'accès (4 à 6 chiffres).</p>
-        <form @submit.prevent="changeCode" class="space-y-2">
-          <input v-model="newCode" inputmode="numeric" placeholder="Nouveau code" class="input-field tracking-widest" required />
-          <p v-if="codeMsg" class="text-xs" :class="codeOk ? 'text-green-400' : 'text-red-400'">{{ codeMsg }}</p>
-          <button type="submit" class="btn-primary w-full text-sm" :disabled="savingCode">
-            {{ savingCode ? 'Enregistrement…' : 'Enregistrer le code' }}
-          </button>
+        <form class="space-y-3" @submit.prevent="changeCode">
+          <InputText v-model="newCode" inputmode="numeric" placeholder="Nouveau code" class="w-full tracking-[0.3em]" required />
+          <Message v-if="codeMsg" :severity="codeOk ? 'success' : 'error'" :closable="false" size="small">{{ codeMsg }}</Message>
+          <Button type="submit" label="Enregistrer le code" icon="pi pi-check" class="w-full" :loading="savingCode" />
         </form>
-      </section>
-
-      <button v-if="!portal.mustChangeCode && !showChangeCode" @click="showChangeCode = true"
-              class="text-xs text-brand-400">Modifier mon code d'accès</button>
-
-      <!-- Liste -->
-      <div v-if="loading" class="text-center py-12 text-slate-400 text-sm">Chargement…</div>
-
-      <div v-else-if="reports.length === 0" class="card text-center py-12 text-slate-400 text-sm">
-        Aucun rapport pour ce numéro.
       </div>
+
+      <Button
+        v-if="!portal.mustChangeCode && !showChangeCode"
+        label="Modifier mon code d'accès"
+        icon="pi pi-key"
+        text
+        size="small"
+        @click="showChangeCode = true"
+      />
+
+      <div v-if="loading" class="grid gap-3">
+        <Skeleton v-for="i in 3" :key="i" height="5.5rem" border-radius="1rem" />
+      </div>
+
+      <EmptyState v-else-if="reports.length === 0" icon="pi pi-inbox" text="Aucun rapport pour ce numéro" />
 
       <div v-else class="space-y-3">
         <RouterLink
           v-for="r in reports"
           :key="r.id"
           :to="{ name: 'PortalReport', params: { id: r.id } }"
-          class="card block hover:bg-slate-700/60 transition-colors"
+          class="scw-panel p-4 block transition-all duration-150 hover:border-primary/40 hover:-translate-y-0.5"
         >
           <div class="flex items-center justify-between gap-2">
-            <p class="font-semibold text-slate-200 truncate">
+            <p class="font-semibold text-slate-100 truncate">
               {{ VEHICLE_TYPE_ICONS[r.vehicleType] || '🚗' }}
               {{ r.plate || VEHICLE_TYPE_LABELS[r.vehicleType] || 'Véhicule' }}
             </p>
-            <span class="text-xs shrink-0 px-2 py-0.5 rounded-full"
-                  :class="r.status === 'COMPLETED' ? 'bg-green-900/50 text-green-300' : 'bg-brand-900/50 text-brand-300'">
-              {{ INSPECTION_STATUS_LABELS[r.status] || r.status }}
-            </span>
+            <Tag :severity="r.status === 'COMPLETED' ? 'success' : 'info'" :value="INSPECTION_STATUS_LABELS[r.status] || r.status" rounded />
           </div>
           <p class="text-xs text-slate-500 mt-1">{{ formatDateTime(r.createdAt) }}</p>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
-            <span v-if="r.serviceName">{{ r.serviceName }}</span>
-            <span>📷 {{ r.beforePhotoCount }} avant / {{ r.afterPhotoCount }} après</span>
+          <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-slate-400">
+            <span v-if="r.serviceName" class="flex items-center gap-1"><i class="pi pi-tag text-[10px]" /> {{ r.serviceName }}</span>
+            <span class="flex items-center gap-1"><i class="pi pi-images text-[10px]" /> {{ r.beforePhotoCount }}/{{ r.afterPhotoCount }}</span>
           </div>
         </RouterLink>
       </div>
@@ -66,6 +71,13 @@ import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { usePortalStore } from '@/stores/portal'
 import { VEHICLE_TYPE_LABELS, VEHICLE_TYPE_ICONS, INSPECTION_STATUS_LABELS } from '@/constants'
+import EmptyState from '@/components/ui/EmptyState.vue'
+
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
+import Skeleton from 'primevue/skeleton'
 
 const router = useRouter()
 const portal = usePortalStore()
