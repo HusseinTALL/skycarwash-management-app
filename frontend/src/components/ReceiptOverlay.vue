@@ -1,34 +1,33 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-end bg-black/60" @click.self="caisse.closeReceipt()">
-    <div ref="trapRef" role="dialog" aria-modal="true" aria-label="Reçu de transaction"
-         class="receipt-print-area w-full bg-slate-800 rounded-t-3xl p-6 space-y-4 animate-slide-up">
-
-      <!-- Status badge -->
+  <Dialog
+    :visible="true"
+    modal
+    :dismissable-mask="true"
+    :show-header="false"
+    class="w-full max-w-sm mx-3"
+    :pt="{ root: { class: 'receipt-print-area' } }"
+    @update:visible="(v) => !v && caisse.closeReceipt()"
+  >
+    <div class="space-y-4 pt-2">
+      <!-- Status -->
       <div class="flex justify-center">
-        <span
-          class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full"
-          :class="tx.cancelledAt
-            ? 'bg-red-900/50 text-red-300'
-            : tx.pending
-              ? 'bg-amber-900/50 text-amber-300'
-              : 'bg-green-900/50 text-green-300'"
-        >
-          <span v-if="tx.cancelledAt">Annulée</span>
-          <span v-else-if="tx.pending">En attente (hors-ligne)</span>
-          <span v-else>Transaction validée</span>
-        </span>
+        <Tag
+          :severity="tx.cancelledAt ? 'danger' : tx.pending ? 'warn' : 'success'"
+          :value="tx.cancelledAt ? 'Annulée' : tx.pending ? 'En attente (hors-ligne)' : 'Transaction validée'"
+          :icon="tx.cancelledAt ? 'pi pi-times-circle' : tx.pending ? 'pi pi-clock' : 'pi pi-check-circle'"
+          rounded
+        />
       </div>
 
       <!-- Service + amount -->
       <div class="text-center">
         <p class="text-slate-400 text-sm">{{ tx.serviceName }}</p>
-        <p class="text-4xl font-bold text-white mt-1">{{ formatPrice(tx.amount) }}</p>
+        <p class="text-4xl font-bold text-slate-100 mt-1">{{ formatPrice(tx.amount) }}</p>
         <p class="text-slate-400 text-sm mt-1">{{ paymentLabel(tx.paymentMethod) }}</p>
       </div>
 
       <hr class="border-slate-700" />
 
-      <!-- Details -->
       <dl class="space-y-2 text-sm">
         <div v-if="tx.id" class="flex justify-between">
           <dt class="text-slate-400">N° transaction</dt>
@@ -44,7 +43,7 @@
         </div>
         <div v-if="tx.clientBalanceAfter !== null && tx.clientBalanceAfter !== undefined" class="flex justify-between">
           <dt class="text-slate-400">Passages restants</dt>
-          <dd :class="tx.clientBalanceAfter <= 1 ? 'text-red-400 font-semibold' : 'text-green-400'">
+          <dd :class="tx.clientBalanceAfter <= 1 ? 'text-red-400 font-semibold' : 'text-emerald-400'">
             {{ tx.clientBalanceAfter }}
           </dd>
         </div>
@@ -54,53 +53,47 @@
         </div>
       </dl>
 
-      <!-- Cancel button – shown within 2-minute window for non-cancelled, non-pending transactions -->
-      <button
-        v-if="!tx.cancelledAt && !tx.pending && caisse.isWithinCancelWindow"
-        @click="caisse.openCancelModal(); caisse.closeReceipt()"
-        class="w-full py-3 rounded-xl border border-red-700 text-red-400 hover:bg-red-900/20 text-sm font-medium transition-colors"
-      >
-        Annuler cette transaction
-      </button>
-
-      <!-- Rapport d'état du véhicule – contrôle visuel avant lavage -->
-      <button
-        v-if="tx.id && !tx.cancelledAt"
-        @click="openInspection()"
-        class="w-full py-3 rounded-xl bg-brand-600/20 border border-brand-600 text-brand-300 hover:bg-brand-600/30 text-sm font-medium transition-colors no-print"
-      >
-        📋 Rapport d'état du véhicule
-      </button>
-
-      <!-- Action buttons -->
-      <div class="flex gap-3 no-print">
-        <button
-          @click="print()"
-          class="flex-1 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
-        >
-          Imprimer
-        </button>
-        <button @click="caisse.closeReceipt()" class="btn-primary flex-1">
-          Fermer
-        </button>
+      <div class="space-y-2 no-print">
+        <Button
+          v-if="!tx.cancelledAt && !tx.pending && caisse.isWithinCancelWindow"
+          label="Annuler cette transaction"
+          icon="pi pi-times-circle"
+          severity="danger"
+          outlined
+          class="w-full"
+          @click="caisse.openCancelModal(); caisse.closeReceipt()"
+        />
+        <Button
+          v-if="tx.id && !tx.cancelledAt"
+          label="Rapport d'état du véhicule"
+          icon="pi pi-camera"
+          severity="info"
+          outlined
+          class="w-full"
+          @click="openInspection()"
+        />
+        <div class="flex gap-3">
+          <Button label="Imprimer" icon="pi pi-print" severity="secondary" outlined class="flex-1" @click="print()" />
+          <Button label="Fermer" icon="pi pi-check" class="flex-1" @click="caisse.closeReceipt()" />
+        </div>
       </div>
     </div>
-  </div>
+  </Dialog>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCaisseStore } from '@/stores/caisse'
 import { PAYMENT_LABELS } from '@/constants'
-import { useFocusTrap } from '@/composables/useFocusTrap'
 
-const caisse  = useCaisseStore()
-const router  = useRouter()
-const tx      = computed(() => caisse.lastTransaction)
-const trapRef = ref(null)
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
 
-useFocusTrap(trapRef)
+const caisse = useCaisseStore()
+const router = useRouter()
+const tx = computed(() => caisse.lastTransaction)
 
 function openInspection() {
   const query = { transactionId: tx.value.id }
@@ -113,30 +106,19 @@ function openInspection() {
 function formatPrice(fcfa) {
   return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA'
 }
-
 function paymentLabel(method) {
   return PAYMENT_LABELS[method] ?? method
 }
-
 function formatTime(iso) {
   if (!iso) return '--'
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
-
 function print() {
   window.print()
 }
 </script>
 
 <style>
-@keyframes slide-up {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-.animate-slide-up {
-  animation: slide-up 0.25s ease-out;
-}
-
 @media print {
   body * { visibility: hidden; }
   .receipt-print-area,
@@ -144,9 +126,6 @@ function print() {
   .receipt-print-area {
     position: fixed;
     inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: white;
     color: black;
   }

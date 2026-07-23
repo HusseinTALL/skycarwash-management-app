@@ -1,357 +1,233 @@
 <template>
-  <div class="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
-    <h2 class="text-xl font-bold">Réglages</h2>
+  <div class="scw-animate-in">
+    <PageHeader title="Réglages" icon="pi pi-cog" subtitle="Services, équipe et paramètres" />
 
-    <div class="grid lg:grid-cols-2 gap-6 items-start">
+    <Tabs value="services">
+      <TabList>
+        <Tab value="services"><i class="pi pi-tags mr-2" />Services</Tab>
+        <Tab value="users"><i class="pi pi-users mr-2" />Utilisateurs</Tab>
+        <Tab value="about"><i class="pi pi-info-circle mr-2" />À propos</Tab>
+      </TabList>
 
-    <!-- ── Services ────────────────────────────────────────────────── -->
-    <div class="card space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-slate-300">Services</h3>
-        <button @click="openServiceForm(null)" class="btn-primary text-sm py-1.5 px-3">
-          + Nouveau
-        </button>
-      </div>
-
-      <div v-if="loadingServices" class="space-y-3 animate-pulse">
-        <div v-for="n in 4" :key="n" class="flex justify-between items-center py-2">
-          <div class="space-y-1.5">
-            <div class="h-4 bg-slate-700 rounded w-28"></div>
-            <div class="h-3 bg-slate-700 rounded w-20"></div>
+      <TabPanels>
+        <!-- ═══ Services ═══ -->
+        <TabPanel value="services">
+          <div class="flex justify-end mb-3">
+            <Button label="Nouveau service" icon="pi pi-plus" @click="openServiceForm(null)" />
           </div>
-          <div class="h-6 bg-slate-700 rounded w-16"></div>
-        </div>
-      </div>
-      <p v-else-if="servicesError" class="text-red-400 text-sm">{{ servicesError }}</p>
+          <Message v-if="servicesError" severity="error" :closable="false" class="mb-3">{{ servicesError }}</Message>
+          <DataTable :value="services" :loading="loadingServices" data-key="id" row-hover class="scw-panel overflow-hidden" :pt="{ table: { style: 'min-width: 32rem' } }">
+            <template #empty><EmptyState icon="pi pi-tags" text="Aucun service" /></template>
+            <Column header="Service" sortable field="name">
+              <template #body="{ data }">
+                <span :class="data.active ? 'font-medium text-slate-100' : 'text-slate-500 line-through'">{{ data.name }}</span>
+              </template>
+            </Column>
+            <Column header="Catégorie" field="category">
+              <template #body="{ data }"><span class="text-slate-400">{{ data.category || '—' }}</span></template>
+            </Column>
+            <Column header="Prix" sortable field="price">
+              <template #body="{ data }"><span class="font-semibold text-primary">{{ data.price.toLocaleString('fr-FR') }} F</span></template>
+            </Column>
+            <Column header="Statut">
+              <template #body="{ data }"><Tag :severity="data.active ? 'success' : 'secondary'" :value="data.active ? 'Actif' : 'Inactif'" rounded /></template>
+            </Column>
+            <Column style="width: 4rem">
+              <template #body="{ data }"><Button icon="pi pi-pencil" text rounded size="small" @click="openServiceForm(data)" /></template>
+            </Column>
+          </DataTable>
+        </TabPanel>
 
-      <ul v-else class="divide-y divide-slate-700">
-        <li
-          v-for="svc in services"
-          :key="svc.id"
-          class="flex items-center justify-between py-3"
-        >
-          <div>
-            <p class="font-medium" :class="svc.active ? 'text-white' : 'text-slate-500 line-through'">
-              {{ svc.name }}
-            </p>
-            <p class="text-xs text-slate-400">{{ svc.category || '—' }} · {{ svc.price.toLocaleString() }} FCFA</p>
+        <!-- ═══ Utilisateurs ═══ -->
+        <TabPanel value="users">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <IconField class="flex-1 min-w-[12rem] max-w-xs">
+              <InputIcon class="pi pi-search" />
+              <InputText v-model="userSearch" placeholder="Rechercher…" class="w-full" />
+            </IconField>
+            <Button label="Nouvel utilisateur" icon="pi pi-user-plus" @click="openUserForm" />
           </div>
-          <button
-            @click="openServiceForm(svc)"
-            class="text-xs text-sky-400 hover:text-sky-300 px-2 py-1"
+
+          <Message v-if="revealedPassword" severity="success" :closable="true" class="mb-3" @close="revealedPassword = null">
+            <div>
+              <p class="font-semibold">{{ revealedPasswordLabel }}</p>
+              <p class="font-mono text-2xl tracking-widest my-1">{{ revealedPassword }}</p>
+              <p class="text-xs opacity-80">Communiquez ce mot de passe verbalement. Il ne sera plus affiché.</p>
+            </div>
+          </Message>
+          <Message v-if="usersError" severity="error" :closable="false" class="mb-3">{{ usersError }}</Message>
+          <Message v-if="actionError" severity="error" :closable="false" class="mb-3">{{ actionError }}</Message>
+
+          <DataTable
+            :value="filteredUsers"
+            :loading="loadingUsers"
+            data-key="id"
+            paginator
+            :rows="10"
+            row-hover
+            class="scw-panel overflow-hidden"
+            :pt="{ table: { style: 'min-width: 34rem' } }"
           >
-            Modifier
-          </button>
-        </li>
-      </ul>
-    </div>
+            <template #empty><EmptyState icon="pi pi-users" text="Aucun utilisateur" /></template>
+            <Column header="Utilisateur" sortable field="name">
+              <template #body="{ data }">
+                <div class="flex items-center gap-2">
+                  <Avatar :label="initials(data.name)" shape="circle" class="!bg-primary/15 !text-primary !text-xs !font-semibold" />
+                  <div>
+                    <p class="font-medium text-slate-100">{{ data.name }}</p>
+                    <p class="text-xs text-slate-400">{{ data.phone }}</p>
+                  </div>
+                </div>
+              </template>
+            </Column>
+            <Column header="Rôle">
+              <template #body="{ data }"><Tag :severity="data.role === 'MANAGER' ? 'warn' : data.role === 'PARTNER' ? 'help' : 'info'" :value="roleLabel(data.role)" rounded /></template>
+            </Column>
+            <Column header="Statut">
+              <template #body="{ data }"><Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Actif' : 'Inactif'" rounded /></template>
+            </Column>
+            <Column style="width: 8rem">
+              <template #body="{ data }">
+                <div v-if="data.role !== 'MANAGER'" class="flex justify-end gap-1">
+                  <Button :icon="data.active ? 'pi pi-ban' : 'pi pi-check-circle'" :severity="data.active ? 'danger' : 'success'" text rounded size="small" v-tooltip.top="data.active ? 'Désactiver' : 'Réactiver'" @click="toggleStatus(data)" />
+                  <Button icon="pi pi-key" severity="secondary" text rounded size="small" v-tooltip.top="'Reset mot de passe'" @click="resetPassword(data)" />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </TabPanel>
 
-    <!-- ── Utilisateurs ─────────────────────────────────────────────── -->
-    <div class="card space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-slate-300">Utilisateurs</h3>
-        <button @click="toggleUserForm" class="btn-primary text-sm py-1.5 px-3">
-          {{ showUserForm ? 'Annuler' : '+ Nouvel utilisateur' }}
-        </button>
-      </div>
+        <!-- ═══ À propos ═══ -->
+        <TabPanel value="about">
+          <div class="scw-panel p-8 text-center space-y-2 max-w-md mx-auto">
+            <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-primary text-slate-950 mb-2">
+              <i class="pi pi-car text-2xl" />
+            </span>
+            <p class="text-slate-100 font-semibold text-lg">SkyCarWash Manager</p>
+            <p class="text-slate-500 text-sm">Version 1.0.0 — Mars 2026</p>
+            <p class="text-slate-600 text-xs">Production ready</p>
+          </div>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
-      <!-- Formulaire inline de création -->
-      <div v-if="showUserForm" class="bg-slate-700/50 rounded-xl p-4 space-y-3">
+    <!-- ═══ Service form dialog ═══ -->
+    <Dialog v-model:visible="showServiceModal" modal :header="editingService ? 'Modifier le service' : 'Nouveau service'" class="w-full max-w-md mx-3">
+      <div class="space-y-4">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Nom complet</label>
-          <input
-            v-model="userForm.name"
-            type="text"
-            class="input-field"
-            placeholder="Ex : Amadou Diallo"
-          />
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Nom <span class="text-red-400">*</span></label>
+          <InputText v-model="form.name" class="w-full" placeholder="Ex : Lavage intérieur" />
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Téléphone</label>
-          <input
-            v-model="userForm.phone"
-            type="tel"
-            class="input-field"
-            placeholder="Ex : +22612345678"
-          />
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Prix (FCFA) <span class="text-red-400">*</span></label>
+          <InputNumber v-model="form.price" :min="0" class="w-full" placeholder="Ex : 3500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Rôle</label>
-          <select v-model="userForm.role" class="input-field">
-            <option value="EMPLOYEE">Employé</option>
-            <option value="PARTNER">Partenaire</option>
-          </select>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Catégorie (optionnelle)</label>
+          <InputText v-model="form.category" class="w-full" placeholder="Ex : Extérieur" />
         </div>
-        <p v-if="userFormError" class="text-red-400 text-sm">{{ userFormError }}</p>
-        <button
-          @click="createUser"
-          :disabled="creatingUser"
-          class="btn-primary w-full disabled:opacity-50"
-        >
-          {{ creatingUser ? 'Création…' : 'Créer le compte' }}
-        </button>
-      </div>
-
-      <!-- Affichage du mot de passe temporaire (une seule fois) -->
-      <div
-        v-if="revealedPassword"
-        class="bg-emerald-900/40 border border-emerald-700 rounded-xl p-4 space-y-2"
-      >
-        <p class="text-emerald-400 text-sm font-semibold">{{ revealedPasswordLabel }}</p>
-        <p class="font-mono text-2xl text-white tracking-widest">{{ revealedPassword }}</p>
-        <p class="text-xs text-slate-400">
-          Communiquez ce mot de passe verbalement. Il ne sera plus affiché.
-        </p>
-        <button
-          @click="revealedPassword = null"
-          class="text-xs text-slate-400 hover:text-slate-300 underline"
-        >
-          Fermer
-        </button>
-      </div>
-
-      <!-- Recherche utilisateurs -->
-      <input
-        v-if="!loadingUsers && !usersError && users.length > 0"
-        v-model="userSearch"
-        type="search"
-        placeholder="Rechercher un utilisateur..."
-        class="input-field"
-      />
-
-      <!-- Liste des utilisateurs -->
-      <div v-if="loadingUsers" class="space-y-3 animate-pulse">
-        <div v-for="n in 3" :key="n" class="flex justify-between items-center py-2">
-          <div class="space-y-1.5">
-            <div class="h-4 bg-slate-700 rounded w-32"></div>
-            <div class="h-3 bg-slate-700 rounded w-24"></div>
-          </div>
-          <div class="flex gap-2">
-            <div class="h-7 bg-slate-700 rounded w-20"></div>
-            <div class="h-7 bg-slate-700 rounded w-20"></div>
-          </div>
+        <div v-if="editingService" class="flex items-center gap-2">
+          <ToggleSwitch v-model="form.active" input-id="activeToggle" />
+          <label for="activeToggle" class="text-sm text-slate-300">Service actif</label>
         </div>
+        <Message v-if="formError" severity="error" :closable="false" size="small">{{ formError }}</Message>
       </div>
-      <p v-else-if="usersError" class="text-red-400 text-sm">{{ usersError }}</p>
-      <p
-        v-else-if="filteredUsers.length === 0 && userSearch"
-        class="text-slate-500 text-sm text-center py-4"
-      >
-        Aucun utilisateur trouvé
-      </p>
-      <template v-else>
-      <ul class="divide-y divide-slate-700">
-        <li
-          v-for="u in paginatedUsers"
-          :key="u.id"
-          class="flex items-center justify-between py-3 gap-2"
-        >
-          <div class="min-w-0">
-            <p class="font-medium text-white truncate">{{ u.name }}</p>
-            <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-              <span class="text-xs text-slate-400">{{ u.phone }}</span>
-              <span class="text-xs text-slate-500">·</span>
-              <span class="text-xs text-slate-400">{{ roleLabel(u.role) }}</span>
-              <span
-                :class="u.active
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-red-500/20 text-red-400'"
-                class="text-xs px-1.5 py-0.5 rounded-full"
-              >
-                {{ u.active ? 'Actif' : 'Inactif' }}
-              </span>
-            </div>
-          </div>
-          <div v-if="u.role !== 'MANAGER'" class="flex gap-2 shrink-0">
-            <button
-              @click="toggleStatus(u)"
-              :aria-label="u.active ? `Désactiver le compte de ${u.name}` : `Réactiver le compte de ${u.name}`"
-              class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300"
-              :class="u.active
-                ? 'hover:bg-red-900/40 hover:text-red-400'
-                : 'hover:bg-emerald-900/40 hover:text-emerald-400'"
-            >
-              {{ u.active ? 'Désactiver' : 'Réactiver' }}
-            </button>
-            <button
-              @click="resetPassword(u)"
-              :aria-label="`Réinitialiser le mot de passe de ${u.name}`"
-              class="text-xs px-2 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-sky-900/40 hover:text-sky-400"
-            >
-              Reset MDP
-            </button>
-          </div>
-        </li>
-      </ul>
-
-      <!-- Users pagination -->
-      <div v-if="userTotalPages > 1" class="flex items-center justify-between text-sm pt-1">
-        <button
-          @click="userPage--"
-          :disabled="userPage === 1"
-          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
-        >
-          ← Préc.
-        </button>
-        <span class="text-slate-400 text-xs">{{ userPage }} / {{ userTotalPages }}</span>
-        <button
-          @click="userPage++"
-          :disabled="userPage === userTotalPages"
-          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
-        >
-          Suiv. →
-        </button>
-      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="closeServiceModal" />
+        <Button label="Enregistrer" icon="pi pi-check" :loading="saving" @click="saveService" />
       </template>
-    </div>
+    </Dialog>
 
-    </div>
-
-    <p v-if="actionError" class="text-red-400 text-sm text-center">{{ actionError }}</p>
-
-    <!-- ── À propos ──────────────────────────────────────────────────── -->
-    <div class="card text-center py-6 space-y-1">
-      <p class="text-slate-300 font-semibold">SkyCarWash Manager</p>
-      <p class="text-slate-500 text-sm">Version 1.0.0 — Mars 2026</p>
-      <p class="text-slate-600 text-xs mt-2">Sprint S10 · Production ready</p>
-    </div>
-
-    <!-- ── Service Form Modal ────────────────────────────────────────── -->
-    <ConfirmModal
-      v-if="pendingToggleUser"
-      :title="pendingToggleUser.active ? `Désactiver ${pendingToggleUser.name} ?` : `Réactiver ${pendingToggleUser.name} ?`"
-      :message="pendingToggleUser.active ? 'Ce compte ne pourra plus se connecter.' : 'Ce compte pourra de nouveau se connecter.'"
-      :confirm-label="pendingToggleUser.active ? 'Désactiver' : 'Réactiver'"
-      :confirm-class="pendingToggleUser.active ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'"
-      @confirm="confirmToggleStatus"
-      @cancel="pendingToggleUser = null"
-    />
-
-    <Teleport to="body">
-      <div
-        v-if="showServiceModal"
-        class="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50"
-        @click.self="closeServiceModal"
-      >
-        <div class="bg-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 space-y-4">
-          <h3 class="font-semibold text-lg">
-            {{ editingService ? 'Modifier le service' : 'Nouveau service' }}
-          </h3>
-
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Nom</label>
-              <input
-                v-model="form.name"
-                type="text"
-                class="input-field"
-                placeholder="Ex : Lavage intérieur"
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Prix (FCFA)</label>
-              <input
-                v-model.number="form.price"
-                type="number"
-                min="0"
-                class="input-field"
-                placeholder="Ex : 3500"
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs text-slate-400 mb-1">Catégorie (optionnelle)</label>
-              <input
-                v-model="form.category"
-                type="text"
-                class="input-field"
-                placeholder="Ex : Extérieur"
-              />
-            </div>
-
-            <div v-if="editingService" class="flex items-center gap-3">
-              <input
-                id="activeToggle"
-                v-model="form.active"
-                type="checkbox"
-                class="w-4 h-4 accent-sky-500"
-              />
-              <label for="activeToggle" class="text-sm text-slate-300">Service actif</label>
-            </div>
-          </div>
-
-          <p v-if="formError" class="text-red-400 text-sm">{{ formError }}</p>
-
-          <div class="flex gap-3 pt-2">
-            <button @click="closeServiceModal" class="btn-secondary flex-1">Annuler</button>
-            <button
-              @click="saveService"
-              :disabled="saving"
-              class="btn-primary flex-1 disabled:opacity-50"
-            >
-              {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
-            </button>
-          </div>
+    <!-- ═══ User form dialog ═══ -->
+    <Dialog v-model:visible="showUserForm" modal header="Nouvel utilisateur" class="w-full max-w-md mx-3">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Nom complet</label>
+          <InputText v-model="userForm.name" class="w-full" placeholder="Ex : Amadou Diallo" />
         </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Téléphone</label>
+          <InputText v-model="userForm.phone" type="tel" class="w-full" placeholder="Ex : +22612345678" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Rôle</label>
+          <Select v-model="userForm.role" :options="ROLE_OPTS" option-label="label" option-value="value" class="w-full" />
+        </div>
+        <Message v-if="userFormError" severity="error" :closable="false" size="small">{{ userFormError }}</Message>
       </div>
-    </Teleport>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="showUserForm = false" />
+        <Button label="Créer le compte" icon="pi pi-check" :loading="creatingUser" @click="createUser" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import { PHONE_REGEX } from '@/constants'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
-// ── State ──────────────────────────────────────────────────────────── //
-const services        = ref([])
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import Select from 'primevue/select'
+import Message from 'primevue/message'
+import ToggleSwitch from 'primevue/toggleswitch'
+
+const confirm = useConfirm()
+const toast = useToast()
+
+const ROLE_OPTS = [
+  { value: 'EMPLOYEE', label: 'Employé' },
+  { value: 'PARTNER', label: 'Partenaire' }
+]
+
+const services = ref([])
 const loadingServices = ref(false)
+const servicesError = ref('')
 
-// ── Users state ─────────────────────────────────────────────────────── //
-const users        = ref([])
+const users = ref([])
 const loadingUsers = ref(false)
+const usersError = ref('')
 
-const showUserForm  = ref(false)
-const creatingUser  = ref(false)
+const showUserForm = ref(false)
+const creatingUser = ref(false)
 const userFormError = ref('')
-const userForm      = ref({ name: '', phone: '', role: 'EMPLOYEE' })
-const userSearch    = ref('')
-
-const USER_PAGE_SIZE = 10
-const userPage      = ref(1)
+const userForm = ref({ name: '', phone: '', role: 'EMPLOYEE' })
+const userSearch = ref('')
 
 const filteredUsers = computed(() => {
   const q = userSearch.value.trim().toLowerCase()
-  return q
-    ? users.value.filter(u => u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q))
-    : users.value
+  return q ? users.value.filter((u) => u.name.toLowerCase().includes(q) || u.phone.toLowerCase().includes(q)) : users.value
 })
 
-const userTotalPages  = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / USER_PAGE_SIZE)))
-const paginatedUsers  = computed(() => {
-  const start = (userPage.value - 1) * USER_PAGE_SIZE
-  return filteredUsers.value.slice(start, start + USER_PAGE_SIZE)
-})
-
-const revealedPassword      = ref(null)
+const revealedPassword = ref(null)
 const revealedPasswordLabel = ref('')
-
-const servicesError  = ref('')
-const usersError     = ref('')
-const actionError    = ref('')
-
-const pendingToggleUser = ref(null)
+const actionError = ref('')
 
 const showServiceModal = ref(false)
-const editingService   = ref(null)
-const saving           = ref(false)
-const formError        = ref('')
-
+const editingService = ref(null)
+const saving = ref(false)
+const formError = ref('')
 const form = ref({ name: '', price: 0, category: '', active: true })
 
-// ── Load services ───────────────────────────────────────────────────── //
 async function loadServices() {
   loadingServices.value = true
   servicesError.value = ''
@@ -364,8 +240,6 @@ async function loadServices() {
     loadingServices.value = false
   }
 }
-
-// ── Load users ──────────────────────────────────────────────────────── //
 async function loadUsers() {
   loadingUsers.value = true
   usersError.value = ''
@@ -378,55 +252,45 @@ async function loadUsers() {
     loadingUsers.value = false
   }
 }
-
-watch(userSearch, () => { userPage.value = 1 })
-
 onMounted(() => { loadServices(); loadUsers() })
 
-// ── Modal helpers ────────────────────────────────────────────────────── //
 function openServiceForm(svc) {
   editingService.value = svc
   formError.value = ''
-  if (svc) {
-    form.value = { name: svc.name, price: svc.price, category: svc.category || '', active: svc.active }
-  } else {
-    form.value = { name: '', price: 0, category: '', active: true }
-  }
+  form.value = svc
+    ? { name: svc.name, price: svc.price, category: svc.category || '', active: svc.active }
+    : { name: '', price: 0, category: '', active: true }
   showServiceModal.value = true
 }
-
 function closeServiceModal() {
   showServiceModal.value = false
 }
 
-// ── User helpers ─────────────────────────────────────────────────────── //
 function roleLabel(role) {
   return role === 'MANAGER' ? 'Manager' : role === 'PARTNER' ? 'Partenaire' : 'Employé'
 }
-
-function toggleUserForm() {
-  showUserForm.value = !showUserForm.value
+function initials(name) {
+  return (name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
+}
+function openUserForm() {
   userFormError.value = ''
   userForm.value = { name: '', phone: '', role: 'EMPLOYEE' }
+  showUserForm.value = true
 }
 
 async function createUser() {
   if (creatingUser.value) return
   userFormError.value = ''
-  if (!userForm.value.name.trim())  { userFormError.value = 'Le nom est requis.'; return }
-  if (!PHONE_REGEX.test(userForm.value.phone.trim())) {
-    userFormError.value = 'Numéro invalide (ex : +22612345678)'
-    return
-  }
-
+  if (!userForm.value.name.trim()) { userFormError.value = 'Le nom est requis.'; return }
+  if (!PHONE_REGEX.test(userForm.value.phone.trim())) { userFormError.value = 'Numéro invalide (ex : +22612345678)'; return }
   creatingUser.value = true
   try {
     const { data } = await api.post('/manager/users', {
-      name:  userForm.value.name.trim(),
+      name: userForm.value.name.trim(),
       phone: userForm.value.phone.trim(),
-      role:  userForm.value.role
+      role: userForm.value.role
     })
-    revealedPassword.value      = data.temporaryPassword
+    revealedPassword.value = data.temporaryPassword
     revealedPasswordLabel.value = `Compte créé — Mot de passe temporaire de ${data.user.name} :`
     showUserForm.value = false
     await loadUsers()
@@ -438,55 +302,57 @@ async function createUser() {
 }
 
 function toggleStatus(user) {
-  pendingToggleUser.value = user
-}
-
-async function confirmToggleStatus() {
-  const user = pendingToggleUser.value
-  pendingToggleUser.value = null
-  actionError.value = ''
-  try {
-    const { data } = await api.patch(`/manager/users/${user.id}/status`, { active: !user.active })
-    const idx = users.value.findIndex(u => u.id === user.id)
-    if (idx !== -1) users.value[idx] = data
-  } catch (err) {
-    actionError.value = err.response?.data?.error || 'Erreur lors de la mise à jour du statut.'
-  }
+  confirm.require({
+    header: user.active ? `Désactiver ${user.name} ?` : `Réactiver ${user.name} ?`,
+    message: user.active ? 'Ce compte ne pourra plus se connecter.' : 'Ce compte pourra de nouveau se connecter.',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: user.active ? 'Désactiver' : 'Réactiver',
+    rejectLabel: 'Annuler',
+    acceptProps: { severity: user.active ? 'danger' : 'success' },
+    accept: async () => {
+      actionError.value = ''
+      try {
+        const { data } = await api.patch(`/manager/users/${user.id}/status`, { active: !user.active })
+        const idx = users.value.findIndex((u) => u.id === user.id)
+        if (idx !== -1) users.value[idx] = data
+        toast.add({ severity: 'success', summary: 'Statut mis à jour', detail: user.name, life: 3000 })
+      } catch (err) {
+        actionError.value = err.response?.data?.error || 'Erreur lors de la mise à jour du statut.'
+      }
+    }
+  })
 }
 
 async function resetPassword(user) {
   actionError.value = ''
   try {
     const { data } = await api.post(`/manager/users/${user.id}/reset-password`)
-    revealedPassword.value      = data.temporaryPassword
+    revealedPassword.value = data.temporaryPassword
     revealedPasswordLabel.value = `Nouveau mot de passe temporaire de ${user.name} :`
   } catch (err) {
     actionError.value = err.response?.data?.error || 'Erreur lors du reset.'
   }
 }
 
-// ── Save (create or update) ──────────────────────────────────────────── //
 async function saveService() {
   if (saving.value) return
   formError.value = ''
   if (!form.value.name.trim()) { formError.value = 'Le nom est requis.'; return }
   if (!form.value.price || form.value.price <= 0) { formError.value = 'Le prix doit être > 0.'; return }
-
   saving.value = true
   try {
     const payload = {
-      name:     form.value.name.trim(),
-      price:    form.value.price,
+      name: form.value.name.trim(),
+      price: form.value.price,
       category: form.value.category.trim() || null,
-      active:   form.value.active
+      active: form.value.active
     }
-
     if (editingService.value) {
       await api.put(`/services/${editingService.value.id}`, payload)
     } else {
       await api.post('/services', payload)
     }
-
+    toast.add({ severity: 'success', summary: 'Service enregistré', detail: payload.name, life: 3000 })
     await loadServices()
     closeServiceModal()
   } catch (err) {

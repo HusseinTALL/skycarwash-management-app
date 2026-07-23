@@ -1,148 +1,93 @@
 <template>
-  <div class="p-4 space-y-4 pb-24">
-
-    <h2 class="text-xl font-bold">Historique des transactions</h2>
+  <div class="scw-animate-in">
+    <PageHeader title="Historique" icon="pi pi-history" subtitle="Transactions encaissées" />
 
     <!-- Filters -->
-    <div class="card space-y-3">
-      <div class="grid grid-cols-2 gap-3">
+    <div class="scw-panel p-3 sm:p-4 mb-4">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Du</label>
-          <input v-model="filters.from" type="date" class="input-field" @change="resetAndLoad" />
+          <label class="block text-xs text-slate-400 mb-1.5">Du</label>
+          <DatePicker v-model="fromDate" date-format="dd/mm/yy" show-icon icon-display="input" class="w-full" @update:model-value="resetAndLoad" />
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Au</label>
-          <input v-model="filters.to" type="date" class="input-field" @change="resetAndLoad" />
+          <label class="block text-xs text-slate-400 mb-1.5">Au</label>
+          <DatePicker v-model="toDate" date-format="dd/mm/yy" show-icon icon-display="input" class="w-full" @update:model-value="resetAndLoad" />
         </div>
-      </div>
-
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Mode de paiement</label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="opt in METHOD_OPTS"
-            :key="opt.value"
-            @click="selectMethod(opt.value)"
-            class="text-xs px-3 py-1.5 rounded-full transition-colors"
-            :class="filters.method === opt.value
-              ? 'bg-brand-500 text-white'
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
-          >
-            {{ opt.label }}
-          </button>
+        <div class="sm:col-span-2 lg:col-span-1">
+          <label class="block text-xs text-slate-400 mb-1.5">Paiement</label>
+          <Select v-model="method" :options="METHOD_OPTS" option-label="label" option-value="value" class="w-full" @change="resetAndLoad" />
         </div>
-      </div>
-
-      <div class="flex justify-end">
-        <button
-          @click="resetFilters"
-          class="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
-        >
-          Réinitialiser les filtres
-        </button>
+        <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" outlined class="w-full" @click="resetFilters" />
       </div>
     </div>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="space-y-2">
-      <div v-for="n in 5" :key="n" class="card animate-pulse">
-        <div class="flex justify-between items-start">
-          <div class="space-y-2 flex-1">
-            <div class="h-4 bg-slate-700 rounded w-2/5"></div>
-            <div class="h-3 bg-slate-700 rounded w-1/3"></div>
-          </div>
-          <div class="h-5 bg-slate-700 rounded w-20"></div>
-        </div>
+    <Message v-if="error" severity="error" :closable="false" class="mb-4">
+      <div class="flex items-center gap-3">
+        <span>{{ error }}</span>
+        <Button label="Réessayer" size="small" text @click="load" />
       </div>
-    </div>
+    </Message>
 
-    <!-- Error -->
-    <div v-else-if="error" class="card text-center py-8 text-red-400">
-      <p>{{ error }}</p>
-      <button @click="load" class="mt-3 text-sm text-sky-400 underline">Réessayer</button>
-    </div>
+    <DataTable
+      :value="transactions"
+      :loading="loading"
+      lazy
+      paginator
+      :rows="20"
+      :total-records="totalElements"
+      :first="page * 20"
+      data-key="id"
+      row-hover
+      class="scw-panel overflow-hidden"
+      :pt="{ table: { style: 'min-width: 44rem' } }"
+      @page="onPage"
+    >
+      <template #empty>
+        <EmptyState icon="pi pi-receipt" text="Aucune transaction" hint="Modifiez les filtres pour voir d'autres résultats" />
+      </template>
 
-    <!-- Empty -->
-    <div v-else-if="transactions.length === 0" class="card text-center py-12 text-slate-400">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-      <p class="font-medium">Aucune transaction</p>
-      <p class="text-sm mt-1">Modifiez les filtres pour voir d'autres résultats</p>
-    </div>
-
-    <!-- Transaction list -->
-    <div v-else class="space-y-2">
-      <div class="grid gap-2 md:grid-cols-2">
-      <div
-        v-for="tx in transactions"
-        :key="tx.id"
-        class="card space-y-1.5"
-        :class="tx.cancelledAt ? 'opacity-60' : ''"
-      >
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <p class="font-semibold" :class="tx.cancelledAt ? 'line-through text-slate-400' : 'text-white'">
-                {{ tx.serviceName }}
-              </p>
-              <span
-                v-if="tx.cancelledAt"
-                class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 shrink-0"
-              >Annulée</span>
+      <Column header="Service" style="min-width: 14rem">
+        <template #body="{ data }">
+          <div :class="{ 'opacity-60': data.cancelledAt }">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold" :class="data.cancelledAt ? 'line-through text-slate-400' : 'text-slate-100'">
+                {{ data.serviceName }}
+              </span>
+              <Tag v-if="data.cancelledAt" severity="danger" value="Annulée" rounded />
             </div>
-            <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400 flex-wrap">
-              <span>{{ formatDateTime(tx.createdAt) }}</span>
-              <span>·</span>
-              <span>{{ tx.userName }}</span>
-              <template v-if="tx.clientName">
-                <span>·</span>
-                <span class="text-sky-400">{{ tx.clientName }}</span>
-              </template>
+            <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-500 flex-wrap">
+              <span>{{ formatDateTime(data.createdAt) }}</span>
+              <span>· {{ data.userName }}</span>
+              <span v-if="data.clientName" class="text-primary">· {{ data.clientName }}</span>
             </div>
+            <p v-if="data.cancelledAt && data.cancelReason" class="text-xs text-red-400 mt-1">
+              Motif : {{ data.cancelReason }}
+            </p>
           </div>
+        </template>
+      </Column>
 
-          <div class="text-right shrink-0">
-            <p class="font-bold text-white">{{ tx.amount.toLocaleString('fr-FR') }} FCFA</p>
-            <span
-              class="text-xs px-2 py-0.5 rounded-full"
-              :class="methodClass(tx.paymentMethod)"
-            >{{ PAYMENT_LABELS[tx.paymentMethod] || tx.paymentMethod }}</span>
-          </div>
+      <Column header="Paiement" style="width: 11rem">
+        <template #body="{ data }">
+          <Tag :severity="methodSeverity(data.paymentMethod)" :value="PAYMENT_LABELS[data.paymentMethod] || data.paymentMethod" rounded />
+        </template>
+      </Column>
+
+      <Column header="Montant" style="width: 9rem">
+        <template #body="{ data }">
+          <span class="font-bold" :class="data.cancelledAt ? 'text-slate-500 line-through' : 'text-slate-100'">
+            {{ data.amount.toLocaleString('fr-FR') }} F
+          </span>
+        </template>
+      </Column>
+
+      <template #footer>
+        <div v-if="transactions.length" class="flex justify-between items-center px-2">
+          <span class="text-sm text-slate-400">Total encaissé (cette page)</span>
+          <span class="font-bold text-emerald-400">{{ pageTotal.toLocaleString('fr-FR') }} FCFA</span>
         </div>
-
-        <p v-if="tx.cancelledAt && tx.cancelReason" class="text-xs text-red-400 border-t border-slate-700 pt-1.5">
-          Motif : {{ tx.cancelReason }}
-        </p>
-      </div>
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex items-center justify-between text-sm pt-1">
-        <button
-          @click="prevPage"
-          :disabled="page === 0"
-          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
-        >
-          ← Préc.
-        </button>
-        <span class="text-slate-400 text-xs">{{ page + 1 }} / {{ totalPages }} · {{ totalElements }} transaction{{ totalElements !== 1 ? 's' : '' }}</span>
-        <button
-          @click="nextPage"
-          :disabled="page >= totalPages - 1"
-          class="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 disabled:opacity-40 hover:bg-slate-600 transition-colors"
-        >
-          Suiv. →
-        </button>
-      </div>
-
-      <!-- Total summary -->
-      <div v-if="transactions.length > 0" class="card bg-slate-700/50 flex justify-between items-center">
-        <span class="text-sm text-slate-400">Total (cette page)</span>
-        <span class="font-bold text-white">{{ pageTotal.toLocaleString('fr-FR') }} FCFA</span>
-      </div>
-    </div>
+      </template>
+    </DataTable>
   </div>
 </template>
 
@@ -150,47 +95,59 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import { PAYMENT_LABELS } from '@/constants'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import Select from 'primevue/select'
+import Message from 'primevue/message'
+import DatePicker from 'primevue/datepicker'
 
 const METHOD_OPTS = [
-  { value: '',           label: 'Tous' },
-  { value: 'CASH',       label: 'Espèces' },
-  { value: 'ORANGE',     label: 'Orange Money' },
-  { value: 'MOOV',       label: 'Moov Money' },
+  { value: '', label: 'Tous' },
+  { value: 'CASH', label: 'Espèces' },
+  { value: 'ORANGE', label: 'Orange Money' },
+  { value: 'MOOV', label: 'Moov Money' },
   { value: 'ABONNEMENT', label: 'Abonnement' }
 ]
+const METHOD_SEVERITY = { CASH: 'success', ORANGE: 'warn', MOOV: 'info', ABONNEMENT: 'help' }
+const methodSeverity = (m) => METHOD_SEVERITY[m] ?? 'secondary'
 
-// Default: today
-const todayIso = new Date().toISOString().slice(0, 10)
+const fromDate = ref(new Date())
+const toDate = ref(new Date())
+const method = ref('')
 
-const filters = ref({ from: todayIso, to: todayIso, method: '' })
-const transactions  = ref([])
-const page          = ref(0)
-const totalPages    = ref(0)
+const transactions = ref([])
+const page = ref(0)
+const totalPages = ref(0)
 const totalElements = ref(0)
-const loading       = ref(false)
-const error         = ref('')
+const loading = ref(false)
+const error = ref('')
 
 const pageTotal = computed(() =>
-  transactions.value
-    .filter(tx => !tx.cancelledAt)
-    .reduce((sum, tx) => sum + tx.amount, 0)
+  transactions.value.filter((tx) => !tx.cancelledAt).reduce((sum, tx) => sum + tx.amount, 0)
 )
+
+function toISO(d) {
+  if (!d) return undefined
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 async function load() {
   loading.value = true
-  error.value   = ''
+  error.value = ''
   try {
-    const params = {
-      from: filters.value.from || undefined,
-      to:   filters.value.to   || undefined,
-      page: page.value,
-      size: 20
-    }
-    if (filters.value.method) params.method = filters.value.method
-
+    const params = { from: toISO(fromDate.value), to: toISO(toDate.value), page: page.value, size: 20 }
+    if (method.value) params.method = method.value
     const { data } = await api.get('/transactions/history', { params })
-    transactions.value  = data.content
-    totalPages.value    = data.totalPages
+    transactions.value = data.content
+    totalPages.value = data.totalPages
     totalElements.value = data.totalElements
   } catch (err) {
     error.value = err.response?.data?.error || 'Impossible de charger les transactions.'
@@ -203,39 +160,20 @@ function resetAndLoad() {
   page.value = 0
   load()
 }
-
-function selectMethod(val) {
-  filters.value.method = val
-  resetAndLoad()
-}
-
 function resetFilters() {
-  filters.value = { from: todayIso, to: todayIso, method: '' }
+  fromDate.value = new Date()
+  toDate.value = new Date()
+  method.value = ''
   resetAndLoad()
 }
-
-function prevPage() {
-  if (page.value > 0) { page.value--; load() }
+function onPage(e) {
+  page.value = e.page
+  load()
 }
-
-function nextPage() {
-  if (page.value < totalPages.value - 1) { page.value++; load() }
-}
-
 function formatDateTime(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
   })
-}
-
-function methodClass(method) {
-  return {
-    CASH:       'bg-emerald-500/20 text-emerald-400',
-    ORANGE:     'bg-orange-500/20 text-orange-400',
-    MOOV:       'bg-blue-500/20 text-blue-400',
-    ABONNEMENT: 'bg-purple-500/20 text-purple-400'
-  }[method] || 'bg-slate-700 text-slate-300'
 }
 
 onMounted(load)

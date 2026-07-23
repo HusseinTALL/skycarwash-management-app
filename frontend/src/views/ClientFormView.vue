@@ -1,130 +1,101 @@
 <template>
-  <div class="p-4 space-y-4">
-    <!-- Header -->
-    <div class="flex items-center gap-3">
-      <RouterLink to="/clients" aria-label="Retour à la liste des clients"
-                  class="text-slate-400 hover:text-slate-200 min-h-0 min-w-0 p-1">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-      </RouterLink>
-      <h2 class="text-xl font-bold">{{ isEdit ? 'Modifier client' : 'Nouveau client' }}</h2>
+  <div class="scw-animate-in max-w-2xl mx-auto">
+    <div class="flex items-center gap-3 mb-5">
+      <Button icon="pi pi-arrow-left" severity="secondary" text rounded aria-label="Retour" @click="router.push('/clients')" />
+      <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+        {{ isEdit ? 'Modifier client' : 'Nouveau client' }}
+      </h1>
     </div>
 
-    <form @submit.prevent="submit" class="space-y-4">
-
-      <!-- Name -->
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Nom complet <span class="text-red-400">*</span></label>
-        <input v-model="form.name" type="text" class="input-field" placeholder="Jean Dupont" required />
+    <form class="scw-panel p-5 sm:p-6 space-y-5" @submit.prevent="submit">
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Nom complet <span class="text-red-400">*</span></label>
+          <InputText v-model="form.name" class="w-full" placeholder="Jean Dupont" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Téléphone <span class="text-red-400">*</span></label>
+          <InputText v-model="form.phone" type="tel" class="w-full" placeholder="+226 xx xx xx xx" required />
+        </div>
       </div>
 
-      <!-- Phone -->
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Téléphone <span class="text-red-400">*</span></label>
-        <input v-model="form.phone" type="tel" class="input-field" placeholder="+226 xx xx xx xx" required />
-      </div>
-
-      <!-- Type -->
       <div>
         <label class="block text-sm font-medium text-slate-300 mb-2">Type d'abonnement <span class="text-red-400">*</span></label>
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="t in TYPES"
-            :key="t.value"
-            type="button"
-            @click="form.type = t.value"
-            class="py-3 rounded-xl border-2 text-sm font-medium transition-all duration-100"
-            :class="form.type === t.value
-              ? 'border-brand-500 bg-brand-500/10 text-brand-400'
-              : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500'"
-          >
-            {{ t.label }}
-          </button>
+        <SelectButton v-model="form.type" :options="TYPES" option-label="label" option-value="value" :allow-empty="false" />
+        <p class="text-xs text-slate-500 mt-1.5">{{ typeHint }}</p>
+      </div>
+
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div v-if="form.type === 'CARTE' || form.type === 'VIP'">
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Passages initiaux <span class="text-red-400">*</span></label>
+          <InputNumber v-model="form.balance" :min="0" :max="100" class="w-full" placeholder="Ex: 10" />
         </div>
-        <p class="text-xs text-slate-500 mt-1">{{ typeHint }}</p>
+        <div v-if="form.type === 'BOUCLIER' || form.type === 'VIP'">
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">
+            Date d'expiration <span v-if="form.type === 'BOUCLIER'" class="text-red-400">*</span>
+          </label>
+          <DatePicker v-model="form.expiresAt" date-format="dd/mm/yy" show-icon icon-display="input" class="w-full" />
+        </div>
       </div>
 
-      <!-- Balance (CARTE / VIP) -->
-      <div v-if="form.type === 'CARTE' || form.type === 'VIP'">
-        <label class="block text-sm font-medium text-slate-300 mb-1">
-          Passages initiaux <span class="text-red-400">*</span>
-        </label>
-        <input
-          v-model.number="form.balance"
-          type="number" min="0" max="100"
-          class="input-field"
-          placeholder="Ex: 10"
-          required
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">Tags</label>
+        <InputText v-model="form.tags" class="w-full" placeholder="flotte, fidèle, entreprise" />
+        <p class="text-xs text-slate-500 mt-1.5">Séparés par des virgules — pour filtrer et segmenter.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">Notes</label>
+        <Textarea v-model="form.notes" rows="3" class="w-full" auto-resize placeholder="Remarques internes sur le client…" />
+      </div>
+
+      <Message v-if="error" severity="error" :closable="false" size="small">{{ error }}</Message>
+
+      <div class="flex justify-end gap-2 pt-1">
+        <Button label="Annuler" severity="secondary" text @click="router.push('/clients')" />
+        <Button
+          type="submit"
+          :label="isEdit ? 'Mettre à jour' : 'Créer le client'"
+          icon="pi pi-check"
+          :loading="submitting"
         />
       </div>
-
-      <!-- ExpiresAt (BOUCLIER / VIP) -->
-      <div v-if="form.type === 'BOUCLIER' || form.type === 'VIP'">
-        <label class="block text-sm font-medium text-slate-300 mb-1">
-          Date d'expiration <span v-if="form.type === 'BOUCLIER'" class="text-red-400">*</span>
-        </label>
-        <input
-          v-model="form.expiresAt"
-          type="date"
-          class="input-field"
-          :required="form.type === 'BOUCLIER'"
-        />
-      </div>
-
-      <!-- Tags -->
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Tags</label>
-        <input v-model="form.tags" type="text" class="input-field" placeholder="flotte, fidèle, entreprise" />
-        <p class="text-xs text-slate-500 mt-1">Séparés par des virgules — pour filtrer et segmenter.</p>
-      </div>
-
-      <!-- Notes -->
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Notes</label>
-        <textarea v-model="form.notes" rows="3" class="input-field" placeholder="Remarques internes sur le client..."></textarea>
-      </div>
-
-      <!-- Error -->
-      <p v-if="error" class="text-red-400 text-sm text-center">{{ error }}</p>
-
-      <button type="submit" class="btn-primary w-full py-4" :disabled="submitting">
-        {{ submitting ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Créer le client') }}
-      </button>
     </form>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import { useClientsStore } from '@/stores/clients'
 import { CLIENT_TYPE_HINTS, PHONE_REGEX } from '@/constants'
 
-const route    = useRoute()
-const router   = useRouter()
-const store    = useClientsStore()
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
+import SelectButton from 'primevue/selectbutton'
+import DatePicker from 'primevue/datepicker'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 
-const isEdit   = computed(() => !!route.params.id)
-const error    = ref('')
+const route = useRoute()
+const router = useRouter()
+const store = useClientsStore()
+const toast = useToast()
+
+const isEdit = computed(() => !!route.params.id)
+const error = ref('')
 const submitting = ref(false)
 
 const TYPES = [
-  { value: 'CARTE',    label: 'Carte passages' },
-  { value: 'BOUCLIER', label: 'Bouclier'       },
-  { value: 'VIP',      label: 'VIP'            }
+  { value: 'CARTE', label: 'Carte passages' },
+  { value: 'BOUCLIER', label: 'Bouclier' },
+  { value: 'VIP', label: 'VIP' }
 ]
 
-
 const form = ref({
-  name:      '',
-  phone:     '',
-  type:      'CARTE',
-  balance:   0,
-  expiresAt: '',
-  tags:      '',
-  notes:     '',
-  active:    true
+  name: '', phone: '', type: 'CARTE', balance: 0, expiresAt: null, tags: '', notes: '', active: true
 })
 
 const typeHint = computed(() => CLIENT_TYPE_HINTS[form.value.type] ?? '')
@@ -135,22 +106,27 @@ onMounted(async () => {
     const c = store.current
     if (c) {
       form.value = {
-        name:      c.name,
-        phone:     c.phone,
-        type:      c.type,
-        balance:   c.balance,
-        expiresAt: c.expiresAt ?? '',
-        tags:      (c.tags ?? []).join(', '),
-        notes:     c.notes ?? '',
-        active:    c.active
+        name: c.name,
+        phone: c.phone,
+        type: c.type,
+        balance: c.balance,
+        expiresAt: c.expiresAt ? new Date(c.expiresAt) : null,
+        tags: (c.tags ?? []).join(', '),
+        notes: c.notes ?? '',
+        active: c.active
       }
     }
   }
 })
 
+function toISODate(d) {
+  if (!d) return null
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 async function submit() {
   if (submitting.value) return
-  error.value    = ''
+  error.value = ''
   const trimmedPhone = form.value.phone.trim()
   if (!PHONE_REGEX.test(trimmedPhone)) {
     error.value = 'Numéro de téléphone invalide (ex : +22612345678)'
@@ -159,25 +135,27 @@ async function submit() {
   submitting.value = true
 
   const payload = {
-    name:      form.value.name.trim(),
-    phone:     trimmedPhone,
-    type:      form.value.type,
-    balance:   form.value.type === 'BOUCLIER' ? 0 : form.value.balance,
-    expiresAt: form.value.expiresAt || null,
-    tags:      form.value.tags.split(',').map(t => t.trim()).filter(Boolean),
-    notes:     form.value.notes.trim() || null,
-    active:    form.value.active
+    name: form.value.name.trim(),
+    phone: trimmedPhone,
+    type: form.value.type,
+    balance: form.value.type === 'BOUCLIER' ? 0 : form.value.balance,
+    expiresAt: toISODate(form.value.expiresAt),
+    tags: form.value.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    notes: form.value.notes.trim() || null,
+    active: form.value.active
   }
 
   try {
     if (isEdit.value) {
       await store.update(route.params.id, payload)
+      toast.add({ severity: 'success', summary: 'Client mis à jour', detail: payload.name, life: 3000 })
     } else {
       await store.create(payload)
+      toast.add({ severity: 'success', summary: 'Client créé', detail: payload.name, life: 3000 })
     }
     router.push('/clients')
   } catch (err) {
-    error.value = err.response?.data?.error ?? 'Erreur lors de l\'enregistrement'
+    error.value = err.response?.data?.error ?? "Erreur lors de l'enregistrement"
   } finally {
     submitting.value = false
   }
