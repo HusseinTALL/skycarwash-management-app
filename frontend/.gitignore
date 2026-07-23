@@ -1,0 +1,6 @@
+# Referenced by the `lint` script (--ignore-path .gitignore) and standard VCS ignores
+node_modules
+dist
+dist-ssr
+coverage
+*.local
