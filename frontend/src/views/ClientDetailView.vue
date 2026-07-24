@@ -25,7 +25,10 @@
               <p class="text-slate-400 text-sm">{{ store.current.phone }}</p>
             </div>
           </div>
-          <Tag :severity="typeSeverity(store.current.type)" :value="CLIENT_TYPE_LABELS[store.current.type] ?? store.current.type" rounded />
+          <div class="flex flex-wrap gap-1.5">
+            <Tag :severity="typeSeverity(store.current.type)" :value="CLIENT_TYPE_LABELS[store.current.type] ?? store.current.type" rounded />
+            <Tag v-if="s?.segment" :severity="SEGMENT_SEVERITIES[s.segment]" :value="SEGMENT_LABELS[s.segment] ?? s.segment" rounded />
+          </div>
 
           <hr class="border-slate-800" />
 
@@ -91,6 +94,61 @@
                 </div>
               </li>
             </ul>
+          </div>
+
+          <!-- Interaction journal -->
+          <div class="scw-panel p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-slate-200">Suivi client</h4>
+              <Button label="Noter un contact" icon="pi pi-plus" size="small" text @click="openInteractionForm" />
+            </div>
+            <EmptyState v-if="!store.interactions.length" icon="pi pi-comments" text="Aucune interaction enregistrée" hint="Appels, réclamations, relances… gardez une trace de chaque contact" />
+            <ul v-else class="space-y-2">
+              <li v-for="i in store.interactions" :key="i.id" class="bg-slate-900/50 rounded-xl px-3 py-2.5">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-2.5 min-w-0">
+                    <span class="grid place-items-center h-7 w-7 rounded-full bg-sky-500/15 text-sky-400 shrink-0">
+                      <i :class="INTERACTION_TYPE_ICONS[i.type]" class="text-xs" />
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-slate-100">{{ INTERACTION_TYPE_LABELS[i.type] ?? i.type }}</p>
+                      <p class="text-sm text-slate-300 whitespace-pre-line">{{ i.notes }}</p>
+                      <p class="text-xs text-slate-500 mt-0.5">
+                        {{ formatDateTime(i.createdAt) }}<span v-if="i.userName"> · {{ i.userName }}</span>
+                      </p>
+                      <div v-if="i.followUpAt" class="mt-1.5 flex items-center gap-2">
+                        <Tag :severity="i.followUpDone ? 'success' : followUpSeverity(i.followUpAt)" :value="(i.followUpDone ? 'Relance faite · ' : 'Relance le ') + formatDate(i.followUpAt)" rounded />
+                        <Button v-if="!i.followUpDone" label="Fait" size="small" text @click="completeFollowUp(i)" />
+                      </div>
+                    </div>
+                  </div>
+                  <Button icon="pi pi-trash" severity="danger" text rounded size="small" class="shrink-0" @click="removeInteraction(i)" />
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Loyalty program -->
+          <div class="scw-panel p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-slate-200">Programme fidélité</h4>
+              <span class="text-amber-300 font-bold"><i class="pi pi-star-fill text-xs mr-1" />{{ store.loyalty?.points ?? s?.loyaltyPoints ?? 0 }} points</span>
+            </div>
+            <p class="text-xs text-slate-500">1 point gagné par lavage. Échangez les points contre une récompense (ex. lavage offert).</p>
+            <div class="flex gap-2">
+              <InputNumber v-model="pointsToRedeem" :min="1" :max="store.loyalty?.points ?? 0" class="flex-1" placeholder="Points à échanger" />
+              <Button label="Échanger" icon="pi pi-gift" severity="warn" outlined :loading="redeeming" :disabled="!pointsToRedeem || pointsToRedeem < 1 || pointsToRedeem > (store.loyalty?.points ?? 0)" @click="redeem" />
+            </div>
+            <Message v-if="redeemError" severity="error" :closable="false" size="small">{{ redeemError }}</Message>
+            <div v-if="store.loyalty?.movements?.length" class="pt-1">
+              <p class="text-xs font-medium text-slate-400 mb-1.5">Derniers mouvements</p>
+              <ul class="space-y-1">
+                <li v-for="m in store.loyalty.movements.slice(0, 6)" :key="m.id" class="flex items-center justify-between text-xs">
+                  <span class="text-slate-400 truncate">{{ m.note || m.type }}</span>
+                  <span class="shrink-0 ml-3 font-semibold" :class="m.points >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ m.points > 0 ? '+' : '' }}{{ m.points }} pt · {{ formatDate(m.createdAt) }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- Wash history timeline -->
@@ -164,6 +222,29 @@
       </template>
     </Dialog>
 
+    <!-- Interaction form dialog -->
+    <Dialog v-model:visible="showInteractionDialog" modal header="Noter un contact" class="w-full max-w-md mx-3">
+      <div v-if="interactionForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Type de contact</label>
+          <Select v-model="interactionForm.type" :options="interactionTypeOptions" option-label="label" option-value="value" class="w-full" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Notes</label>
+          <Textarea v-model="interactionForm.notes" rows="3" class="w-full" placeholder="Ex. : client appelé pour le renouvellement de son abonnement" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Relance prévue (optionnel)</label>
+          <DatePicker v-model="interactionForm.followUpAt" :min-date="new Date()" date-format="dd/mm/yy" show-icon class="w-full" placeholder="Choisir une date" />
+        </div>
+        <Message v-if="interactionError" severity="error" :closable="false" size="small">{{ interactionError }}</Message>
+      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="showInteractionDialog = false" />
+        <Button label="Enregistrer" icon="pi pi-check" :loading="interactionSaving" :disabled="!interactionForm?.notes?.trim()" @click="saveInteraction" />
+      </template>
+    </Dialog>
+
     <!-- QR card dialog -->
     <Dialog v-model:visible="showQrModal" modal header="Carte client" class="w-full max-w-sm mx-3" :pt="{ root: { id: 'qr-card-root' } }">
       <div v-if="store.current" id="qr-card-content" class="flex flex-col items-center gap-4 py-2">
@@ -189,7 +270,11 @@ import { useClientsStore } from '@/stores/clients'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import QRCode from 'qrcode'
-import { PAYMENT_LABELS, VEHICLE_TYPE_LABELS, VEHICLE_TYPE_ICONS } from '@/constants'
+import {
+  PAYMENT_LABELS, VEHICLE_TYPE_LABELS, VEHICLE_TYPE_ICONS,
+  SEGMENT_LABELS, SEGMENT_SEVERITIES,
+  INTERACTION_TYPE_LABELS, INTERACTION_TYPE_ICONS
+} from '@/constants'
 import KpiCard from '@/components/ui/KpiCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
@@ -204,6 +289,8 @@ import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
+import DatePicker from 'primevue/datepicker'
 
 const CLIENT_TYPE_LABELS = { CARTE: 'Carte passages', BOUCLIER: 'Bouclier', VIP: 'VIP' }
 const typeSeverity = (t) => ({ CARTE: 'info', BOUCLIER: 'help', VIP: 'warn' }[t] ?? 'secondary')
@@ -227,6 +314,16 @@ const vehicleForm = ref(null)
 const showVehicleDialog = ref(false)
 const vehicleSaving = ref(false)
 const vehicleError = ref('')
+
+const interactionTypeOptions = Object.entries(INTERACTION_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+const interactionForm = ref(null)
+const showInteractionDialog = ref(false)
+const interactionSaving = ref(false)
+const interactionError = ref('')
+
+const pointsToRedeem = ref(null)
+const redeeming = ref(false)
+const redeemError = ref('')
 
 function initials(name) {
   return (name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
@@ -292,7 +389,91 @@ function formatDateTime(iso) {
 onMounted(() => {
   store.loadById(route.params.id)
   store.loadSummary(route.params.id)
+  store.loadInteractions(route.params.id).catch(() => { store.interactions = [] })
+  store.loadLoyalty(route.params.id).catch(() => { store.loyalty = null })
 })
+
+// ── Interaction journal ─────────────────────────────────────────────── //
+
+function openInteractionForm() {
+  interactionError.value = ''
+  interactionForm.value = { type: 'CALL', notes: '', followUpAt: null }
+  showInteractionDialog.value = true
+}
+
+function toIsoDate(d) {
+  if (!d) return null
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+}
+
+async function saveInteraction() {
+  if (interactionSaving.value) return
+  interactionError.value = ''
+  interactionSaving.value = true
+  try {
+    await store.addInteraction(route.params.id, {
+      type: interactionForm.value.type,
+      notes: interactionForm.value.notes.trim(),
+      followUpAt: toIsoDate(interactionForm.value.followUpAt)
+    })
+    showInteractionDialog.value = false
+    toast.add({ severity: 'success', summary: 'Contact enregistré', life: 3000 })
+  } catch (err) {
+    interactionError.value = err.response?.data?.error ?? "Erreur lors de l'enregistrement"
+  } finally {
+    interactionSaving.value = false
+  }
+}
+
+async function completeFollowUp(i) {
+  try {
+    await store.markFollowUpDone(route.params.id, i.id)
+    toast.add({ severity: 'success', summary: 'Relance marquée comme faite', life: 3000 })
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Erreur', detail: err.response?.data?.error ?? 'Action impossible', life: 4000 })
+  }
+}
+
+function removeInteraction(i) {
+  confirm.require({
+    header: 'Supprimer cette interaction ?',
+    message: `${INTERACTION_TYPE_LABELS[i.type] ?? i.type} · ${formatDateTime(i.createdAt)}`,
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Supprimer',
+    rejectLabel: 'Annuler',
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      try {
+        await store.deleteInteraction(route.params.id, i.id)
+        toast.add({ severity: 'info', summary: 'Interaction supprimée', life: 3000 })
+      } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err.response?.data?.error ?? 'Suppression impossible', life: 4000 })
+      }
+    }
+  })
+}
+
+function followUpSeverity(iso) {
+  return new Date(iso) <= new Date() ? 'warn' : 'info'
+}
+
+// ── Loyalty ─────────────────────────────────────────────────────────── //
+
+async function redeem() {
+  if (redeeming.value) return
+  redeemError.value = ''
+  redeeming.value = true
+  try {
+    const status = await store.redeemPoints(route.params.id, pointsToRedeem.value, 'Récompense fidélité')
+    toast.add({ severity: 'success', summary: 'Points échangés', detail: `Nouveau solde : ${status.points} points`, life: 3000 })
+    pointsToRedeem.value = null
+  } catch (err) {
+    redeemError.value = err.response?.data?.error ?? "Erreur lors de l'échange de points"
+  } finally {
+    redeeming.value = false
+  }
+}
 
 function printCard() {
   window.print()

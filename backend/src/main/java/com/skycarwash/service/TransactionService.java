@@ -39,6 +39,7 @@ public class TransactionService {
     private final ProductRepository       productRepository;
     private final StockMovementRepository stockMovementRepository;
     private final SimpMessagingTemplate   messagingTemplate;
+    private final CrmService              crmService;
 
     // ------------------------------------------------------------------ //
     //  CREATE TRANSACTION                                                  //
@@ -54,14 +55,19 @@ public class TransactionService {
             throw new BusinessException("Service is no longer active");
         }
 
-        // 2. Handle subscription (ABONNEMENT) payment
+        // 2. Attach the client when one is selected (any payment method), so the
+        //    CRM history & loyalty points also cover cash / mobile-money washes
         Client client = null;
-        if (req.paymentMethod() == PaymentMethod.ABONNEMENT) {
-            if (req.clientId() == null) {
-                throw new BusinessException("Un client doit être sélectionné pour un paiement par abonnement");
-            }
+        if (req.paymentMethod() == PaymentMethod.ABONNEMENT && req.clientId() == null) {
+            throw new BusinessException("Un client doit être sélectionné pour un paiement par abonnement");
+        }
+        if (req.clientId() != null) {
             client = clientRepository.findById(req.clientId())
                     .orElseThrow(() -> new EntityNotFoundException("Client not found: " + req.clientId()));
+        }
+
+        // 3. Subscription (ABONNEMENT) payment consumes one passage
+        if (req.paymentMethod() == PaymentMethod.ABONNEMENT) {
             if (!client.isActive()) {
                 throw new BusinessException("Ce client n'a pas d'abonnement actif");
             }
@@ -72,11 +78,11 @@ public class TransactionService {
             clientRepository.save(client);
         }
 
-        // 3. Load the employee/manager recording the transaction
+        // 4. Load the employee/manager recording the transaction
         User user = userRepository.findByPhone(phone)
                 .orElseThrow(() -> new EntityNotFoundException("User not found for phone: " + phone));
 
-        // 4. Persist the transaction
+        // 5. Persist the transaction
         Transaction tx = Transaction.builder()
                 .service(service)
                 .client(client)
@@ -86,10 +92,15 @@ public class TransactionService {
                 .build();
         tx = transactionRepository.save(tx);
 
-        // 5. Decrement product stock for each consumed product
+        // 6. Loyalty: one point per wash for identified clients
+        if (client != null) {
+            crmService.earnPoint(client, tx);
+        }
+
+        // 7. Decrement product stock for each consumed product
         decrementStock(service.getProductConsumption(), tx);
 
-        // 6. Notify dashboard via WebSocket
+        // 8. Notify dashboard via WebSocket
         notifyDashboard("transaction.created", tx.getId());
 
         log.info("Transaction #{} created — service='{}' method={} user={}",
@@ -126,6 +137,9 @@ public class TransactionService {
             client.setBalance(client.getBalance() + 1);
             clientRepository.save(client);
         }
+
+        // Take back loyalty points earned by this wash
+        crmService.reverseEarnedPoints(tx);
 
         // Reverse stock movements (create IN for each OUT linked to this transaction)
         reverseStockMovements(tx);

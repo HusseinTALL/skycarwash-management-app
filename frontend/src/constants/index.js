@@ -117,3 +117,41 @@ export const WS_EVENTS = {
   TRANSACTION_CREATED:   'transaction.created',
   TRANSACTION_CANCELLED: 'transaction.cancelled'
 }
+
+// ── CRM segments (computed server-side from visit recency/frequency) ── //
+export const SEGMENT_LABELS = {
+  NOUVEAU:    'Nouveau',
+  FIDELE:     'Fidèle',
+  REGULIER:   'Régulier',
+  A_RELANCER: 'À relancer',
+  INACTIF:    'Inactif'
+}
+
+export const SEGMENT_SEVERITIES = {
+  NOUVEAU:    'info',
+  FIDELE:     'success',
+  REGULIER:   'secondary',
+  A_RELANCER: 'warn',
+  INACTIF:    'danger'
+}
+
+// ── CRM interaction journal ────────────────────────────────────────── //
+export const INTERACTION_TYPE_LABELS = {
+  CALL:      'Appel',
+  SMS:       'SMS',
+  WHATSAPP:  'WhatsApp',
+  VISIT:     'Visite',
+  COMPLAINT: 'Réclamation',
+  FEEDBACK:  'Avis',
+  OTHER:     'Autre'
+}
+
+export const INTERACTION_TYPE_ICONS = {
+  CALL:      'pi pi-phone',
+  SMS:       'pi pi-comment',
+  WHATSAPP:  'pi pi-whatsapp',
+  VISIT:     'pi pi-map-marker',
+  COMPLAINT: 'pi pi-exclamation-circle',
+  FEEDBACK:  'pi pi-star',
+  OTHER:     'pi pi-ellipsis-h'
+}

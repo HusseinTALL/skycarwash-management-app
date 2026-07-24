@@ -74,17 +74,17 @@ class ClientServiceTest {
         ));
 
         // active VIPs only → excludes Bob (CARTE) and Carl (inactive)
-        List<ClientListItemDto> vips = clientService.findEnriched(null, Client.ClientType.VIP, "active", null, "spent");
+        List<ClientListItemDto> vips = clientService.findEnriched(null, Client.ClientType.VIP, "active", null, null, "spent");
         assertThat(vips).extracting(ClientListItemDto::name).containsExactly("Alice");
         assertThat(vips.get(0).totalSpent()).isEqualTo(5000);
         assertThat(vips.get(0).vehicleCount()).isEqualTo(2);
 
         // tag filter
-        List<ClientListItemDto> fideles = clientService.findEnriched(null, null, "active", "fidèle", "name");
+        List<ClientListItemDto> fideles = clientService.findEnriched(null, null, "active", "fidèle", null, "name");
         assertThat(fideles).extracting(ClientListItemDto::name).containsExactly("Bob");
 
         // status=all, sort by spend desc → Bob (9000) before Alice (5000)
-        List<ClientListItemDto> all = clientService.findEnriched(null, null, "all", null, "spent");
+        List<ClientListItemDto> all = clientService.findEnriched(null, null, "all", null, null, "spent");
         assertThat(all).extracting(ClientListItemDto::name).containsExactly("Bob", "Alice", "Carl");
     }
 
@@ -93,6 +93,7 @@ class ClientServiceTest {
     @Test
     void getSummary_computesSpendVisitsAndLoyalty() {
         Client bob = client(1, "Bob", Client.ClientType.CARTE, true, null);
+        bob.setLoyaltyPoints(2);
         ServiceEntity svc = ServiceEntity.builder().id(1L).name("Lavage complet").price(4000).active(true).build();
 
         LocalDateTime recent = LocalDateTime.now();

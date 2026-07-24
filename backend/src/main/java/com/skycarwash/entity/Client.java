@@ -41,6 +41,11 @@ public class Client {
     @Column(length = 255)
     private String tags;
 
+    /** Loyalty balance — earned per wash, spendable via the loyalty ledger */
+    @Column(name = "loyalty_points", nullable = false)
+    @Builder.Default
+    private int loyaltyPoints = 0;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;
