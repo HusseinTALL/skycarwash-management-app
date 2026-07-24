@@ -20,5 +20,7 @@ public record ClientListItemDto(
         long totalSpent,
         long visitCount,
         LocalDateTime lastVisitAt,
-        long vehicleCount
+        long vehicleCount,
+        int loyaltyPoints,
+        ClientSegment segment
 ) {}

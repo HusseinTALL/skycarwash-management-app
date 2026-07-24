@@ -50,10 +50,13 @@ public class ClientService {
      * @param type    CARTE / BOUCLIER / VIP
      * @param status  "active" (default), "inactive" or "all"
      * @param tag     single tag the client must carry
+     * @param segment computed CRM segment (NOUVEAU, FIDELE, REGULIER, A_RELANCER, INACTIF)
      * @param sort    name (default) | recent | spent | visits | created
      */
     public List<ClientListItemDto> findEnriched(String q, Client.ClientType type,
-                                                String status, String tag, String sort) {
+                                                String status, String tag,
+                                                ClientSegment segment, String sort) {
+        LocalDateTime now = LocalDateTime.now();
         Map<Long, long[]> stats = new HashMap<>();          // clientId -> [totalSpent, visitCount]
         Map<Long, LocalDateTime> lastVisit = new HashMap<>();
         for (Object[] row : transactionRepository.aggregateStatsByClient()) {
@@ -78,11 +81,14 @@ public class ClientService {
             if (wantTag != null && tags.stream().noneMatch(t -> t.equalsIgnoreCase(wantTag))) continue;
 
             long[] s = stats.getOrDefault(c.getId(), new long[]{0, 0});
+            ClientSegment computed = ClientSegment.of(s[1], lastVisit.get(c.getId()), c.getCreatedAt(), now);
+            if (segment != null && computed != segment) continue;
             rows.add(new ClientListItemDto(
                     c.getId(), c.getName(), c.getPhone(), c.getType(), c.getBalance(),
                     c.getExpiresAt(), tags, c.isActive(), c.getCreatedAt(),
                     s[0], s[1], lastVisit.get(c.getId()),
-                    vehicleCounts.getOrDefault(c.getId(), 0L)
+                    vehicleCounts.getOrDefault(c.getId(), 0L),
+                    c.getLoyaltyPoints(), computed
             ));
         }
         rows.sort(comparatorFor(sort));
@@ -121,9 +127,10 @@ public class ClientService {
                 .map(v -> new VehicleDto(v.getId(), v.getPlate(), v.getLabel(), v.getType(), v.getCreatedAt()))
                 .toList();
 
-        // Loyalty: one point per completed wash
+        ClientSegment segment = ClientSegment.of(visitCount, lastVisit,
+                client.getCreatedAt(), LocalDateTime.now());
         return new ClientSummaryDto(toDto(client), totalSpent, visitCount, lastVisit,
-                visitCount, vehicles, history);
+                client.getLoyaltyPoints(), segment, vehicles, history);
     }
 
     // ── Create ───────────────────────────────────────────────────────── //

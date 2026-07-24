@@ -1,16 +1,16 @@
 package com.skycarwash.controller;
 
-import com.skycarwash.dto.ClientDto;
-import com.skycarwash.dto.ClientListItemDto;
-import com.skycarwash.dto.ClientSummaryDto;
-import com.skycarwash.dto.VehicleDto;
+import com.skycarwash.dto.*;
 import com.skycarwash.entity.Client;
 import com.skycarwash.service.ClientService;
+import com.skycarwash.service.CrmService;
 import com.skycarwash.service.VehicleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,10 +23,12 @@ public class ClientController {
 
     private final ClientService clientService;
     private final VehicleService vehicleService;
+    private final CrmService crmService;
 
     /**
      * Segmentable, stats-enriched client list.
-     * Optional filters: q, type, status (active|inactive|all), tag, sort (name|recent|spent|visits|created).
+     * Optional filters: q, type, status (active|inactive|all), tag, segment,
+     * sort (name|recent|spent|visits|created).
      */
     @GetMapping
     public ResponseEntity<List<ClientListItemDto>> getAll(
@@ -34,8 +36,15 @@ public class ClientController {
             @RequestParam(required = false) Client.ClientType type,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) ClientSegment segment,
             @RequestParam(required = false) String sort) {
-        return ResponseEntity.ok(clientService.findEnriched(q, type, status, tag, sort));
+        return ResponseEntity.ok(clientService.findEnriched(q, type, status, tag, segment, sort));
+    }
+
+    /** CRM cockpit: segment counts, follow-ups due, expiring subscriptions, top clients. */
+    @GetMapping("/crm/overview")
+    public ResponseEntity<CrmOverviewDto> crmOverview() {
+        return ResponseEntity.ok(crmService.overview());
     }
 
     /** Search clients by name or phone — used by caisse ABONNEMENT picker. */
@@ -107,5 +116,49 @@ public class ClientController {
             @PathVariable Long id, @PathVariable Long vehicleId) {
         vehicleService.delete(id, vehicleId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Interaction journal (sub-resource) ───────────────────────────── //
+
+    @GetMapping("/{id}/interactions")
+    public ResponseEntity<List<InteractionDto>> listInteractions(@PathVariable Long id) {
+        return ResponseEntity.ok(crmService.listInteractions(id));
+    }
+
+    @PostMapping("/{id}/interactions")
+    public ResponseEntity<InteractionDto> addInteraction(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateInteractionRequest request,
+            @AuthenticationPrincipal UserDetails principal) {
+        String phone = principal != null ? principal.getUsername() : null;
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(crmService.addInteraction(id, request, phone));
+    }
+
+    /** Mark a follow-up ("relance") as handled. */
+    @PutMapping("/{id}/interactions/{interactionId}/done")
+    public ResponseEntity<InteractionDto> markFollowUpDone(
+            @PathVariable Long id, @PathVariable Long interactionId) {
+        return ResponseEntity.ok(crmService.markFollowUpDone(id, interactionId));
+    }
+
+    @DeleteMapping("/{id}/interactions/{interactionId}")
+    public ResponseEntity<Void> deleteInteraction(
+            @PathVariable Long id, @PathVariable Long interactionId) {
+        crmService.deleteInteraction(id, interactionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Loyalty program (sub-resource) ───────────────────────────────── //
+
+    @GetMapping("/{id}/loyalty")
+    public ResponseEntity<LoyaltyStatusDto> getLoyalty(@PathVariable Long id) {
+        return ResponseEntity.ok(crmService.getLoyalty(id));
+    }
+
+    @PostMapping("/{id}/loyalty/redeem")
+    public ResponseEntity<LoyaltyStatusDto> redeemPoints(
+            @PathVariable Long id, @Valid @RequestBody RedeemPointsRequest request) {
+        return ResponseEntity.ok(crmService.redeem(id, request));
     }
 }

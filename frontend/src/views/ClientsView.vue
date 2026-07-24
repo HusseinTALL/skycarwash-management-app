@@ -14,6 +14,32 @@
       </template>
     </PageHeader>
 
+    <!-- CRM cockpit: segments + actionable alerts -->
+    <div v-if="store.overview" class="mb-4 space-y-3">
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="(count, seg) in store.overview.segmentCounts"
+          :key="seg"
+          class="scw-panel px-3 py-2 flex items-center gap-2 transition-colors"
+          :class="filterSegment === seg ? 'ring-1 ring-primary' : 'hover:bg-slate-800/60'"
+          @click="toggleSegment(seg)"
+        >
+          <Tag :severity="SEGMENT_SEVERITIES[seg]" :value="SEGMENT_LABELS[seg] ?? seg" rounded />
+          <span class="font-bold text-slate-100">{{ count }}</span>
+        </button>
+      </div>
+      <div v-if="store.overview.followUpsDue.length || store.overview.expiringSoon.length" class="flex flex-wrap gap-2 text-xs">
+        <span v-if="store.overview.followUpsDue.length" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-300">
+          <i class="pi pi-bell text-[11px]" />
+          {{ store.overview.followUpsDue.length }} relance{{ store.overview.followUpsDue.length > 1 ? 's' : '' }} à faire
+        </span>
+        <span v-if="store.overview.expiringSoon.length" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-300">
+          <i class="pi pi-calendar-times text-[11px]" />
+          {{ store.overview.expiringSoon.length }} abonnement{{ store.overview.expiringSoon.length > 1 ? 's' : '' }} à renouveler
+        </span>
+      </div>
+    </div>
+
     <!-- Filters toolbar -->
     <div class="scw-panel p-3 sm:p-4 mb-4">
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -65,6 +91,7 @@
               <Avatar :label="initials(data.name)" shape="circle" class="!bg-primary/15 !text-primary !text-xs !font-semibold" />
               <span class="font-semibold text-slate-100">{{ data.name }}</span>
               <Tag :severity="typeSeverity(data.type)" :value="CLIENT_TYPE_LABELS[data.type] ?? data.type" rounded />
+              <Tag v-if="data.segment" :severity="SEGMENT_SEVERITIES[data.segment]" :value="SEGMENT_LABELS[data.segment] ?? data.segment" rounded />
               <Tag v-if="!data.active" severity="secondary" value="Inactif" rounded />
             </div>
             <div class="flex items-center gap-2 mt-1 ml-9">
@@ -99,6 +126,12 @@
         </template>
       </Column>
 
+      <Column header="Points" sortable field="loyaltyPoints" style="width: 7rem">
+        <template #body="{ data }">
+          <span class="text-amber-300"><i class="pi pi-star-fill text-[11px] mr-1" />{{ data.loyaltyPoints }}</span>
+        </template>
+      </Column>
+
       <Column header="Dernière visite" style="width: 10rem">
         <template #body="{ data }">
           <span class="text-sm text-slate-400">{{ data.lastVisitAt ? formatDate(data.lastVisitAt) : 'Jamais' }}</span>
@@ -119,6 +152,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useClientsStore } from '@/stores/clients'
+import { SEGMENT_LABELS, SEGMENT_SEVERITIES } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
@@ -144,6 +178,7 @@ let debounce
 const filterType = ref('')
 const filterStatus = ref('active')
 const filterTag = ref('')
+const filterSegment = ref('')
 const sortKey = ref('name')
 
 const typeOptions = [
@@ -171,10 +206,19 @@ function reload() {
     type: filterType.value,
     status: filterStatus.value,
     tag: filterTag.value,
+    segment: filterSegment.value,
     sort: sortKey.value
   })
 }
-onMounted(reload)
+onMounted(() => {
+  reload()
+  store.loadOverview().catch(() => {}) // cockpit is best-effort, the list still works without it
+})
+
+function toggleSegment(seg) {
+  filterSegment.value = filterSegment.value === seg ? '' : seg
+  reload()
+}
 
 function onSearch() {
   clearTimeout(debounce)

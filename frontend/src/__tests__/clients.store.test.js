@@ -29,14 +29,14 @@ describe('loadAll', () => {
     expect(store.loading).toBe(false)
   })
 
-  it('passes filters (q, type, status, tag, sort) when provided', async () => {
+  it('passes filters (q, type, status, tag, segment, sort) when provided', async () => {
     api.get.mockResolvedValue({ data: [C1] })
     const store = useClientsStore()
 
-    await store.loadAll({ q: 'Al', type: 'VIP', status: 'all', tag: 'flotte', sort: 'spent' })
+    await store.loadAll({ q: 'Al', type: 'VIP', status: 'all', tag: 'flotte', segment: 'FIDELE', sort: 'spent' })
 
     expect(api.get).toHaveBeenCalledWith('/clients', {
-      params: { q: 'Al', type: 'VIP', status: 'all', tag: 'flotte', sort: 'spent' }
+      params: { q: 'Al', type: 'VIP', status: 'all', tag: 'flotte', segment: 'FIDELE', sort: 'spent' }
     })
   })
 
@@ -148,6 +148,92 @@ describe('deactivate', () => {
     expect(store.clients).toHaveLength(1)
     expect(store.clients[0]).toEqual(C2)
     expect(store.current).toBeNull()
+  })
+})
+
+describe('CRM overview', () => {
+  it('fetches the cockpit and stores it', async () => {
+    const cockpit = { segmentCounts: { FIDELE: 2 }, followUpsDue: [], expiringSoon: [], topClients: [] }
+    api.get.mockResolvedValue({ data: cockpit })
+    const store = useClientsStore()
+
+    await store.loadOverview()
+
+    expect(api.get).toHaveBeenCalledWith('/clients/crm/overview')
+    expect(store.overview.segmentCounts.FIDELE).toBe(2)
+  })
+})
+
+describe('interactions', () => {
+  it('loads the journal', async () => {
+    const rows = [{ id: 1, type: 'CALL', notes: 'Rappel abonnement' }]
+    api.get.mockResolvedValue({ data: rows })
+    const store = useClientsStore()
+
+    await store.loadInteractions(1)
+
+    expect(api.get).toHaveBeenCalledWith('/clients/1/interactions')
+    expect(store.interactions).toHaveLength(1)
+  })
+
+  it('prepends a newly created interaction', async () => {
+    const created = { id: 2, type: 'COMPLAINT', notes: 'Rayure signalée' }
+    api.post.mockResolvedValue({ data: created })
+    const store = useClientsStore()
+    store.interactions = [{ id: 1, type: 'CALL', notes: 'x' }]
+
+    await store.addInteraction(1, { type: 'COMPLAINT', notes: 'Rayure signalée' })
+
+    expect(api.post).toHaveBeenCalledWith('/clients/1/interactions', expect.objectContaining({ type: 'COMPLAINT' }))
+    expect(store.interactions[0]).toEqual(created)
+    expect(store.interactions).toHaveLength(2)
+  })
+
+  it('marks a follow-up as done in place', async () => {
+    const done = { id: 1, type: 'CALL', notes: 'x', followUpDone: true }
+    api.put.mockResolvedValue({ data: done })
+    const store = useClientsStore()
+    store.interactions = [{ id: 1, type: 'CALL', notes: 'x', followUpDone: false }]
+
+    await store.markFollowUpDone(1, 1)
+
+    expect(api.put).toHaveBeenCalledWith('/clients/1/interactions/1/done')
+    expect(store.interactions[0].followUpDone).toBe(true)
+  })
+
+  it('removes a deleted interaction', async () => {
+    api.delete.mockResolvedValue({})
+    const store = useClientsStore()
+    store.interactions = [{ id: 1 }, { id: 2 }]
+
+    await store.deleteInteraction(1, 2)
+
+    expect(api.delete).toHaveBeenCalledWith('/clients/1/interactions/2')
+    expect(store.interactions).toHaveLength(1)
+  })
+})
+
+describe('loyalty', () => {
+  it('loads points and movements', async () => {
+    api.get.mockResolvedValue({ data: { points: 7, movements: [] } })
+    const store = useClientsStore()
+
+    await store.loadLoyalty(1)
+
+    expect(api.get).toHaveBeenCalledWith('/clients/1/loyalty')
+    expect(store.loyalty.points).toBe(7)
+  })
+
+  it('redeems points and syncs the summary counter', async () => {
+    api.post.mockResolvedValue({ data: { points: 2, movements: [] } })
+    const store = useClientsStore()
+    store.summary = { client: C1, loyaltyPoints: 10, vehicles: [], history: [] }
+
+    await store.redeemPoints(1, 8, 'Lavage offert')
+
+    expect(api.post).toHaveBeenCalledWith('/clients/1/loyalty/redeem', { points: 8, note: 'Lavage offert' })
+    expect(store.loyalty.points).toBe(2)
+    expect(store.summary.loyaltyPoints).toBe(2)
   })
 })
 

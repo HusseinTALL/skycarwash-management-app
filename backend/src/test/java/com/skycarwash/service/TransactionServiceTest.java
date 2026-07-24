@@ -35,6 +35,7 @@ class TransactionServiceTest {
     @Mock ProductRepository       productRepository;
     @Mock StockMovementRepository stockMovementRepository;
     @Mock SimpMessagingTemplate   messagingTemplate;
+    @Mock CrmService              crmService;
 
     @InjectMocks TransactionService transactionService;
 

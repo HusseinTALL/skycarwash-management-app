@@ -10,6 +10,7 @@ public record ClientSummaryDto(
         long visitCount,
         LocalDateTime lastVisitAt,
         long loyaltyPoints,
+        ClientSegment segment,
         List<VehicleDto> vehicles,
         List<ClientHistoryItemDto> history
 ) {}
