@@ -12,7 +12,9 @@
 set -euo pipefail
 
 COMPOSE_FILE="docker-compose.prod.yml"
-BRANCH="${DEPLOY_BRANCH:-claude/project-assessment-kr2hmk}"
+# main is the integration branch that carries every feature session's work
+# (CRM, inspections, service seed, …). Deploy it unless DEPLOY_BRANCH overrides.
+BRANCH="${DEPLOY_BRANCH:-main}"
 
 cd "$(dirname "$0")"
 
