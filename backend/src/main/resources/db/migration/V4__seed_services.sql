@@ -1,5 +1,5 @@
 -- ============================================================
--- V3 – Seed service catalogue
+-- V4 – Seed service catalogue
 -- Source: Sky CarWash — Grille tarifaire, Ouagadougou 2026 (FCFA)
 --
 -- One row per (prestation x type de véhicule). The vehicle type is stored
